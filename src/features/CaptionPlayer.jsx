@@ -12,8 +12,9 @@ export const CaptionPlayer = forwardRef(
       width = 1080,
       height = 1350,
       loop = true,
-      autoPlay = true,
+      autoPlay = false,
       controls = false,
+      playbackRate = 1,
       style,
       videoUrl,
     },
@@ -31,6 +32,7 @@ export const CaptionPlayer = forwardRef(
         loop={loop}
         autoPlay={autoPlay}
         controls={controls}
+        playbackRate={playbackRate}
         style={{
           width: "100%",
           height: "100%",

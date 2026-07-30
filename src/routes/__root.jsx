@@ -36,16 +36,16 @@ export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: NotFound,
   errorComponent: ({ error, reset }) => (
-    <div style={{ padding: 40, background: "#0A0A0A", color: "#fff", minHeight: "100vh" }}>
+    <div style={{ padding: 40, background: "var(--bg-base)", color: "var(--text-primary)", minHeight: "100vh" }}>
       <h1 style={{ fontSize: 24, fontWeight: 700 }}>Something broke</h1>
-      <pre style={{ color: "#9CA3AF", marginTop: 8 }}>{error.message}</pre>
+      <pre style={{ color: "var(--text-secondary)", marginTop: 8 }}>{error.message}</pre>
       <button
         onClick={reset}
         style={{
           marginTop: 16,
           padding: "8px 20px",
           borderRadius: 9999,
-          background: "#D97736",
+          background: "var(--primary)",
           color: "#030303",
           border: "none",
           fontSize: 12,
@@ -75,7 +75,7 @@ function RootShell({ children }) {
       <head>
         <HeadContent />
       </head>
-      <body style={{ background: "#0A0A0A" }}>
+      <body>
         <WebGLBackground />
         {children}
         <Scripts />
@@ -94,14 +94,14 @@ function NotFound() {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        background: "#0A0A0A",
+        background: "var(--bg-base)",
       }}
     >
-      <h1 style={{ fontSize: 48, fontWeight: 700, color: "#FFFFFF" }}>404</h1>
+      <h1 style={{ fontSize: 48, fontWeight: 700, color: "var(--text-primary)" }}>404</h1>
       <a
         href="/"
         style={{
-          color: "#D97736",
+          color: "var(--primary)",
           marginTop: 8,
           fontSize: 14,
           fontWeight: 500,

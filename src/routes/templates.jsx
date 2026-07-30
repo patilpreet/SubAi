@@ -15,7 +15,7 @@ function TemplateCard({ t }) {
 
   return (
     <div
-      className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#0A0A0A]/80 backdrop-blur-2xl p-4 hover:border-[#D97736]/25 transition-all duration-150 group cursor-pointer"
+      className="rounded-2xl border border-[var(--border-base)] bg-[var(--bg-base)]/80 backdrop-blur-2xl p-4 hover:border-[var(--primary)]/25 transition-all duration-150 group cursor-pointer"
       onClick={() => navigate({ to: "/dashboard", search: { template: t.id } })}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -33,7 +33,7 @@ function TemplateCard({ t }) {
           background:
             typeof t.bg === "string" && t.bg !== "transparent" && !t.bg.startsWith("rgba")
               ? t.bg
-              : "#0A0A0A",
+              : "var(--bg-base)",
         }}
       >
         <span
@@ -54,16 +54,16 @@ function TemplateCard({ t }) {
       </div>
       <h3 className="font-semibold text-sm text-white">{t.name}</h3>
       <div className="flex flex-wrap gap-1.5 mt-2">
-        <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-[rgba(255,255,255,0.06)] text-[9px] text-[#6B7280] font-medium">
+        <span className="px-2 py-0.5 rounded-md bg-[var(--bg-surface)]/20 border border-[rgba(255,255,255,0.06)] text-[9px] text-[var(--text-secondary)] font-medium">
           {t.weight}
         </span>
-        <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-[rgba(255,255,255,0.06)] text-[9px] text-[#6B7280] font-medium">
+        <span className="px-2 py-0.5 rounded-md bg-[var(--bg-surface)]/20 border border-[rgba(255,255,255,0.06)] text-[9px] text-[var(--text-secondary)] font-medium">
           {animationLabels[t.animation] || t.animation}
         </span>
-        <span className="px-2 py-0.5 rounded-md bg-white/[0.04] border border-[rgba(255,255,255,0.06)] text-[9px] text-[#6B7280] font-medium">
+        <span className="px-2 py-0.5 rounded-md bg-[var(--bg-surface)]/20 border border-[rgba(255,255,255,0.06)] text-[9px] text-[var(--text-secondary)] font-medium">
           {caseLabels[t.case] || t.case}
         </span>
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] border border-[rgba(255,255,255,0.06)] text-[9px] text-[#6B7280] font-medium">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[var(--bg-surface)]/20 border border-[rgba(255,255,255,0.06)] text-[9px] text-[var(--text-secondary)] font-medium">
           <span className="w-2 h-2 rounded-full" style={{ background: t.color }} />
           {t.color}
         </span>
@@ -90,16 +90,16 @@ function TemplatesPage() {
             <h1 className="text-[clamp(2.2rem,5vw,3.4rem)] font-black tracking-tight leading-[1.06] mb-3">
               <span className="gradient-text">{PRESETS.length}</span> Caption Styles
             </h1>
-            <p className="text-[#9CA3AF] max-w-lg mx-auto">
+            <p className="text-[var(--text-secondary)] max-w-lg mx-auto">
               Every style reveals word-by-word, highlights the active word, and is fully tunable.
               Pick one and ship.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3 max-w-lg mx-auto mb-10">
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.04] border border-[rgba(255,255,255,0.08)] flex-1 w-full">
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-[var(--bg-surface)]/20 border border-[var(--border-base)] flex-1 w-full">
               <svg
-                className="w-4 h-4 text-[#6B7280] shrink-0"
+                className="w-4 h-4 text-[var(--text-secondary)] shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -121,10 +121,10 @@ function TemplatesPage() {
                 <button
                   key={a}
                   onClick={() => setAnimFilter(a)}
-                  className={`px-3 py-2 rounded-md text-[11px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D97736]/50 ${
+                  className={`px-3 py-2 rounded-md text-[11px] font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/50 ${
                     animFilter === a
-                      ? "bg-[#D97736]/15 text-[#FF9A4D] border border-[#D97736]/25"
-                      : "bg-white/[0.04] text-[#6B7280] border border-[rgba(255,255,255,0.06)] hover:text-[#D1D5DB]"
+                      ? "bg-[var(--primary)]/15 text-[var(--tertiary)] border border-[var(--primary)]/25"
+                      : "bg-[var(--bg-surface)]/20 text-[var(--text-secondary)] border border-[rgba(255,255,255,0.06)] hover:text-[var(--text-tertiary)]"
                   }`}
                 >
                   {a === "all" ? "All" : animationLabels[a] || a}
@@ -140,7 +140,7 @@ function TemplatesPage() {
           </div>
 
           {filtered.length === 0 && (
-            <div className="text-center py-16 text-[#6B7280]">
+            <div className="text-center py-16 text-[var(--text-secondary)]">
               No styles found matching &ldquo;{search}&rdquo;
             </div>
           )}

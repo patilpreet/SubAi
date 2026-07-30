@@ -6,6 +6,7 @@ export const useEditorStore = create((set, get) => ({
   subtitles: [],
   past: [],
   future: [],
+  zoom: 1,
 
   load: (subtitles) => set({ subtitles: clone(subtitles), past: [], future: [] }),
 
@@ -35,6 +36,54 @@ export const useEditorStore = create((set, get) => ({
     const next = subtitles.map((s) => (s.id === id ? { ...s, [field]: value } : s));
     set({ subtitles: next, past: [...past, subtitles], future: [] });
   },
+
+  updateSegment: (id, start, end) => {
+    const { subtitles, past } = get();
+    const next = subtitles.map((s) => (s.id === id ? { ...s, start, end } : s));
+    set({ subtitles: next, past: [...past, subtitles], future: [] });
+  },
+
+  splitSegment: (id, splitTime) => {
+    const { subtitles, past } = get();
+    const idx = subtitles.findIndex((s) => s.id === id);
+    if (idx === -1) return;
+    const seg = subtitles[idx];
+    if (splitTime <= seg.start || splitTime >= seg.end) return;
+
+    const words = seg.text.split(" ");
+    const durationRatio = (splitTime - seg.start) / (seg.end - seg.start);
+    const splitWordIdx = Math.max(
+      1,
+      Math.min(words.length - 1, Math.round(words.length * durationRatio)),
+    );
+
+    const leftText = words.slice(0, splitWordIdx).join(" ");
+    const rightText = words.slice(splitWordIdx).join(" ");
+
+    const leftSeg = {
+      id: `split-${crypto.randomUUID().slice(0, 8)}`,
+      start: seg.start,
+      end: splitTime,
+      text: leftText,
+    };
+    const rightSeg = {
+      id: `split-${crypto.randomUUID().slice(0, 8)}`,
+      start: splitTime,
+      end: seg.end,
+      text: rightText,
+    };
+
+    const next = [...subtitles.slice(0, idx), leftSeg, rightSeg, ...subtitles.slice(idx + 1)];
+    set({ subtitles: next, past: [...past, subtitles], future: [] });
+  },
+
+  deleteSegment: (id) => {
+    const { subtitles, past } = get();
+    const next = subtitles.filter((s) => s.id !== id);
+    set({ subtitles: next, past: [...past, subtitles], future: [] });
+  },
+
+  setZoom: (zoom) => set({ zoom: Math.max(0.25, Math.min(8, zoom)) }),
 
   setSubtitles: (subtitles) => {
     set({ subtitles });

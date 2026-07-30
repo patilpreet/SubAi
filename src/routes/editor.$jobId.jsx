@@ -36,7 +36,10 @@ import {
   X,
   Check,
   Loader2,
+  PanelLeft,
+  PanelRight,
 } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/editor/$jobId")({
   ssr: false,
@@ -49,11 +52,6 @@ const fmt = (s) => {
   return `${m}:${sec}`;
 };
 
-const WAVEFORM = Array.from(
-  { length: 200 },
-  (_, i) => 4 + Math.abs(Math.sin(i * 0.3) * 14 + Math.sin(i * 0.7) * 8 + Math.sin(i * 1.3) * 5),
-);
-
 const IS_FREE_TIER = true;
 
 const INDIAN_LANGUAGES = [
@@ -62,12 +60,12 @@ const INDIAN_LANGUAGES = [
   { code: "te", name: "Telugu", native: "తెలుగు" },
   { code: "bn", name: "Bengali", native: "বাংলা" },
   { code: "mr", name: "Marathi", native: "मराठी" },
-  { code: "gu", name: "Gujarati", native: "ગુજરાતી" },
+  { code: "gu", name: "Gujarati", native: "ગુજરાती" },
   { code: "kn", name: "Kannada", native: "ಕನ್ನಡ" },
-  { code: "ml", name: "Malayalam", native: "മലയാളം" },
+  { code: "ml", name: "Malayalam", native: "മലയാളம்" },
   { code: "pa", name: "Punjabi", native: "ਪੰਜਾਬੀ" },
   { code: "or", name: "Odia", native: "ଓଡ଼ିଆ" },
-  { code: "as", name: "Assamese", native: "অসমীয়া" },
+  { code: "as", name: "Assamese", native: "অसमीया" },
   { code: "ur", name: "Urdu", native: "اردو" },
   { code: "sa", name: "Sanskrit", native: "संस्कृतम्" },
   { code: "mai", name: "Maithili", native: "मैथिली" },
@@ -78,14 +76,14 @@ const INDIAN_LANGUAGES = [
   { code: "doi", name: "Dogri", native: "डोगरी" },
   { code: "kok", name: "Konkani", native: "कोंकणी" },
   { code: "brx", name: "Bodo", native: "बरʼ" },
-  { code: "mni", name: "Manipuri", native: "মৈতৈলোন্" },
+  { code: "mni", name: "Manipuri", native: "মৈতैलोन्" },
 ];
 
 const overlayBase = {
   position: "fixed",
   inset: 0,
   zIndex: 300,
-  background: "rgba(0,0,0,0.65)",
+  background: "rgba(0,0,0,0.15)",
   backdropFilter: "blur(8px)",
   display: "flex",
   alignItems: "center",
@@ -93,16 +91,15 @@ const overlayBase = {
 };
 
 const modalBase = {
-  background: "rgba(10,10,10,0.8)",
-  backdropFilter: "blur(24px)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  borderRadius: 16,
+  background: "var(--bg-surface)",
+  border: "1px solid var(--border-base)",
+  borderRadius: 20,
   padding: 24,
   maxWidth: 600,
   width: "90%",
   maxHeight: "85vh",
   overflow: "auto",
-  boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+  boxShadow: "var(--shadow-deep)",
 };
 
 function Tooltip({ text, children }) {
@@ -121,17 +118,17 @@ function Tooltip({ text, children }) {
             bottom: "calc(100% + 8px)",
             left: "50%",
             transform: "translateX(-50%)",
-            background: "#27272a",
-            color: "#d4d4d8",
+            background: "var(--bg-surface)",
+            color: "var(--text-primary)",
             padding: "5px 10px",
-            borderRadius: 6,
+            borderRadius: 20,
             fontSize: 11,
-            fontWeight: 500,
+            fontWeight: 600,
             whiteSpace: "nowrap",
             pointerEvents: "none",
             zIndex: 500,
             border: "1px solid rgba(255,255,255,0.08)",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+            boxShadow: "var(--shadow-card)",
           }}
         >
           {text}
@@ -167,27 +164,27 @@ function EmptyState() {
           width="64"
           height="48"
           rx="8"
-          stroke="#52525b"
+          stroke="var(--text-secondary)"
           strokeWidth="2"
           fill="none"
         />
-        <rect x="14" y="26" width="52" height="8" rx="2" fill="#27272a" />
-        <rect x="14" y="38" width="36" height="6" rx="2" fill="#27272a" />
-        <rect x="14" y="48" width="44" height="6" rx="2" fill="#27272a" />
-        <circle cx="64" cy="56" r="8" fill="#27272a" stroke="#52525b" strokeWidth="1.5" />
+        <rect x="14" y="26" width="52" height="8" rx="2" fill="var(--bg-base)" />
+        <rect x="14" y="38" width="36" height="6" rx="2" fill="var(--bg-base)" />
+        <rect x="14" y="48" width="44" height="6" rx="2" fill="var(--bg-base)" />
+        <circle cx="64" cy="56" r="8" fill="var(--bg-base)" stroke="var(--text-secondary)" strokeWidth="1.5" />
         <path
           d="M61 56l2 2 4-4"
-          stroke="#D97736"
+          stroke="var(--primary)"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
       </svg>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "#6b7280" }}>No captions yet</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)" }}>No captions yet</div>
       <p
         style={{
           fontSize: 11,
-          color: "#52525b",
+          color: "var(--text-tertiary)",
           lineHeight: 1.6,
           margin: 0,
           maxWidth: 200,
@@ -197,10 +194,11 @@ function EmptyState() {
         <br />
         <code
           style={{
-            color: "#9CA3AF",
-            background: "rgba(255,255,255,0.05)",
+            color: "var(--primary)",
+            background: "rgba(0,0,0,0.03)",
             padding: "1px 4px",
             borderRadius: 4,
+            fontWeight: 600,
           }}
         >
           GROQ_API_KEY
@@ -209,16 +207,17 @@ function EmptyState() {
         in{" "}
         <code
           style={{
-            color: "#9CA3AF",
-            background: "rgba(255,255,255,0.05)",
+            color: "var(--primary)",
+            background: "rgba(0,0,0,0.03)",
             padding: "1px 4px",
             borderRadius: 4,
+            fontWeight: 600,
           }}
         >
           .env
         </code>
         <br />
-        or upload a new video from dashboard.
+        or upload a new video.
       </p>
       <div
         style={{
@@ -226,8 +225,9 @@ function EmptyState() {
           alignItems: "center",
           gap: 6,
           fontSize: 11,
-          color: "#52525b",
+          color: "var(--text-tertiary)",
           marginTop: 4,
+          fontWeight: 500,
         }}
       >
         <Sparkles size={11} />
@@ -243,7 +243,7 @@ function EditorPage() {
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const videoRef = useRef(null);
+  const playerRef = useRef(null);
   const [job, setJob] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
   const [playing, setPlaying] = useState(false);
@@ -255,14 +255,16 @@ function EditorPage() {
   const [lineMode, setLineMode] = useState("1");
   const [editingId, setEditingId] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [toasts, setToasts] = useState([]);
   const [hookModal, setHookModal] = useState(false);
   const [generatingHook, setGeneratingHook] = useState(false);
   const [generatedHook, setGeneratedHook] = useState(null);
   const [scriptMode, setScriptMode] = useState("roman");
   const [translateModal, setTranslateModal] = useState(false);
   const [translateLang, setTranslateLang] = useState(null);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [leftPanelOpen, setLeftPanelOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [brandKits, setBrandKits] = useState(() => {
     try {
       const stored = localStorage.getItem("brandKits");
@@ -275,39 +277,122 @@ function EditorPage() {
   const subtitles = useEditorStore((s) => s.subtitles);
   const load = useEditorStore((s) => s.load);
   const updateText = useEditorStore((s) => s.updateText);
-  const updateSegmentTime = useEditorStore((s) => s.updateSegmentTime);
+  const updateSegment = useEditorStore((s) => s.updateSegment);
+  const splitSegment = useEditorStore((s) => s.splitSegment);
+  const deleteSegment = useEditorStore((s) => s.deleteSegment);
+  const zoom = useEditorStore((s) => s.zoom);
+  const setZoom = useEditorStore((s) => s.setZoom);
   const undo = useEditorStore((s) => s.undo);
   const redo = useEditorStore((s) => s.redo);
   const runCleanup = useEditorStore((s) => s.runCleanup);
   const canUndo = useEditorStore((s) => s.past.length > 0);
   const canRedo = useEditorStore((s) => s.future.length > 0);
 
+  const [selectedSegId, setSelectedSegId] = useState(null);
   const [presetId, setPresetId] = useState(PRESETS[0].id);
   const preset = PRESETS.find((p) => p.id === presetId);
 
   const push = useCallback((msg) => {
-    const id = crypto.randomUUID();
-    setToasts((t) => [...t, { id, msg }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+    toast(msg, { duration: 4000 });
   }, []);
 
   useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
+    const player = playerRef.current;
+    if (!player) return;
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
+    const onFrame = (e) => setCurrentTime(e.detail.frame / 30);
+    player.addEventListener("play", onPlay);
+    player.addEventListener("pause", onPause);
+    player.addEventListener("frameupdate", onFrame);
+    return () => {
+      player.removeEventListener("play", onPlay);
+      player.removeEventListener("pause", onPause);
+      player.removeEventListener("frameupdate", onFrame);
+    };
+  }, []);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player) return;
     if (playing) {
-      el.play().catch(() => {});
+      player.play().catch(() => {});
     } else {
-      el.pause();
+      player.pause();
     }
   }, [playing]);
 
-  useEffect(() => {
-    const el = videoRef.current;
-    if (!el) return;
-    const onTime = () => setCurrentTime(el.currentTime);
-    el.addEventListener("timeupdate", onTime);
-    return () => el.removeEventListener("timeupdate", onTime);
+  const totalDuration = useMemo(() => {
+    if (!subtitles.length) return 12;
+    return subtitles[subtitles.length - 1].end + 1;
+  }, [subtitles]);
+
+  const fullTranscript = useMemo(() => {
+    return subtitles.map((s) => s.text).join(" ");
+  }, [subtitles]);
+
+  const handleTimelineSeek = useCallback((t) => {
+    setCurrentTime(t);
+    const player = playerRef.current;
+    if (player) {
+      try {
+        player.seekTo(Math.round(t * 30));
+      } catch {}
+    }
   }, []);
+
+  const handleSplitSegment = useCallback((id, splitTime) => {
+    splitSegment(id, splitTime);
+    push("Segment split");
+  }, [splitSegment, push]);
+
+  const handleDeleteSegment = useCallback((id) => {
+    deleteSegment(id);
+    setSelectedSegId(null);
+    push("Segment deleted");
+  }, [deleteSegment, push]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "Escape") {
+        setLeftPanelOpen(false);
+        setRightPanelOpen(false);
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key === "b") {
+        e.preventDefault();
+        if (selectedSegId) {
+          handleSplitSegment(selectedSegId, currentTime);
+        }
+      }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedSegId && e.target.tagName !== "INPUT") {
+          e.preventDefault();
+          handleDeleteSegment(selectedSegId);
+        }
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        handleTimelineSeek(Math.max(0, currentTime - 1 / 30));
+      }
+      if (e.key === "ArrowRight") {
+        e.preventDefault();
+        handleTimelineSeek(Math.min(totalDuration, currentTime + 1 / 30));
+      }
+      if (e.key === " " && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        const p = playerRef.current;
+        if (p) {
+          if (p.isPlaying()) { p.pause(); } else { p.play(); }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedSegId, currentTime, handleSplitSegment, handleDeleteSegment, handleTimelineSeek, totalDuration, setLeftPanelOpen, setRightPanelOpen]);
 
   useEffect(() => {
     async function loadJobData() {
@@ -354,15 +439,6 @@ function EditorPage() {
     loadJobData();
   }, [jobId]);
 
-  const totalDuration = useMemo(() => {
-    if (!subtitles.length) return 12;
-    return subtitles[subtitles.length - 1].end + 1;
-  }, [subtitles]);
-
-  const fullTranscript = useMemo(() => {
-    return subtitles.map((s) => s.text).join(" ");
-  }, [subtitles]);
-
   const handleScriptChange = (mode) => {
     setScriptMode(mode);
     const original = localStorage.getItem(`subtitles_${jobId}_original`);
@@ -372,9 +448,7 @@ function EditorPage() {
     }
     const converted = convertSubtitles(source, mode);
     load(converted);
-    push(
-      `Switched to ${mode === "roman" ? "Roman Hinglish" : mode === "native" ? "Native Script" : "English"} script`,
-    );
+    push(`Script updated`);
   };
 
   const handleGenerateHook = async () => {
@@ -408,13 +482,13 @@ function EditorPage() {
     });
     setHookModal(false);
     setGeneratedHook(null);
-    push("Hook applied to first caption segment");
+    push("Hook applied");
   };
 
   const drawWatermark = (ctx, canvas) => {
     ctx.save();
     ctx.font = "14px Inter, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.textAlign = "right";
     ctx.fillText("SubAI", canvas.width - 16, canvas.height - 12);
     ctx.restore();
@@ -423,9 +497,9 @@ function EditorPage() {
   const handleExport = async () => {
     setExporting(true);
     let cancelled = false;
-    push("Preparing video export...");
+    push("Preparing export...");
     try {
-      let videoEl = videoRef.current || document.querySelector("video");
+      let videoEl = document.querySelector("video");
       if (!videoEl && videoUrl) {
         videoEl = document.createElement("video");
         videoEl.src = videoUrl;
@@ -451,27 +525,59 @@ function EditorPage() {
       canvas.width = videoEl.videoWidth || 1080;
       canvas.height = videoEl.videoHeight || 1920;
       const ctx = canvas.getContext("2d");
-      const stream = canvas.captureStream(30);
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-        ? "video/webm;codecs=vp9"
-        : "video/webm";
-      const recorder = new MediaRecorder(stream, { mimeType });
+      const canvasStream = canvas.captureStream(30);
+
+      let audioCtx = null;
+      let audioDest = null;
+      try {
+        if (!videoEl._sarvamAudioAttached) {
+          audioCtx = new AudioContext();
+          const source = audioCtx.createMediaElementSource(videoEl);
+          audioDest = audioCtx.createMediaStreamDestination();
+          source.connect(audioDest);
+          source.connect(audioCtx.destination);
+          videoEl._sarvamAudioCtx = audioCtx;
+          videoEl._sarvamAudioDest = audioDest;
+          videoEl._sarvamAudioAttached = true;
+        } else {
+          audioCtx = videoEl._sarvamAudioCtx;
+          audioDest = videoEl._sarvamAudioDest;
+        }
+      } catch (_) {}
+
+      const combinedStream = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...(audioDest ? audioDest.stream.getAudioTracks() : []),
+      ]);
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
+          ? "video/webm;codecs=vp8,opus"
+          : "video/webm";
+      const recorder = new MediaRecorder(combinedStream, {
+        mimeType,
+        videoBitsPerSecond: 5000000,
+      });
       const chunks = [];
       recorder.ondataavailable = (e) => chunks.push(e.data);
       recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "video/webm" });
+        const blob = new Blob(chunks, { type: mimeType });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
         a.download = `${job?.title || "captioned"}-captioned.webm`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
         setExporting(false);
         push("Export complete!");
       };
       videoEl.currentTime = 0;
+      await new Promise((r) => setTimeout(r, 200));
       recorder.start();
-      videoEl.play();
+      videoEl.play().catch(() => {});
       const fontSize = Math.round(canvas.height * 0.04);
       const drawFrame = () => {
         if (cancelled) {
@@ -575,7 +681,7 @@ function EditorPage() {
         setPresetId(match.id);
         push(`Applied "${kit.name}" brand kit`);
       } else {
-        push(`Could not apply "${kit.name}" — preset not found`);
+        push(`Preset not found`);
       }
     },
     [push],
@@ -597,7 +703,7 @@ function EditorPage() {
       return;
     }
     const lang = INDIAN_LANGUAGES.find((l) => l.code === translateLang);
-    push(`Translate to ${lang.name} (${lang.native}) — feature coming soon`);
+    push(`Translate to ${lang.name} — coming soon`);
     setTranslateModal(false);
     setTranslateLang(null);
   }, [translateLang, push]);
@@ -612,28 +718,12 @@ function EditorPage() {
           justifyContent: "center",
           height: "100vh",
           gap: 16,
-          background: "#0A0A0A",
-          color: "#fff",
+          background: "var(--bg-base)",
+          color: "var(--text-primary)",
         }}
       >
-        <div style={{ fontSize: 48, fontWeight: 800, color: "#27272a" }}>404</div>
-        <div style={{ fontSize: 14, color: "#6b7280" }}>Project not found</div>
-        <button
-          onClick={() => navigate({ to: "/dashboard" })}
-          style={{
-            marginTop: 8,
-            padding: "8px 20px",
-            borderRadius: 9999,
-            background: "#D97736",
-            color: "#030303",
-            fontSize: 13,
-            fontWeight: 600,
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          Back to Dashboard
-        </button>
+        <h2>Project not found</h2>
+        <Link to="/dashboard" style={{ color: "var(--primary)", fontWeight: 600 }}>Back to Dashboard</Link>
       </div>
     );
   }
@@ -643,168 +733,131 @@ function EditorPage() {
       <div
         style={{
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           height: "100vh",
-          gap: 10,
-          background: "#0A0A0A",
-          color: "#fff",
+          gap: 12,
+          background: "var(--bg-base)",
         }}
       >
-        <Loader2 size={18} className="animate-spin" style={{ color: "#D97736" }} />
-        <span style={{ fontSize: 13, color: "#6b7280" }}>Loading editor...</span>
+        <Loader2 size={28} className="animate-spin" style={{ color: "var(--primary)" }} />
+        <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Loading workspace...</span>
       </div>
     );
   }
 
   return (
     <div className={styles.shell}>
-      <div className={styles.topbar}>
+      <header className={styles.topbar}>
         <div className={styles.topLeft}>
-          <Tooltip text="Back to dashboard">
-            <button className={styles.backBtn} onClick={() => navigate({ to: "/dashboard" })}>
-              <ArrowLeft size={15} />
-            </button>
-          </Tooltip>
-          <Link to="/dashboard" className={styles.brand}>
-            <img src="/subai-logo.png" alt="SubAI" style={{ height: 56, width: "auto", objectFit: "contain" }} />
-          </Link>
-          <span style={{ color: "#52525b", fontSize: 13 }}>/</span>
-          <span className={styles.projectName}>{job.title || "Editor"}</span>
-
-          <div className={styles.resSwitcher}>
-            {["1080p", "720p"].map((r) => (
-              <button
-                key={r}
-                className={`${styles.resBtn} ${resolution === r ? styles.resBtnActive : ""}`}
-                onClick={() => setResolution(r)}
-              >
-                {r}
-              </button>
-            ))}
+          <button className={styles.backBtn} onClick={() => navigate({ to: "/dashboard" })}>
+            <ArrowLeft size={14} style={{ marginRight: 4 }} />
+            Back
+          </button>
+          <div className={styles.brand}>
+            <div className={styles.brandDot} />
+            <span>SubAI Editor</span>
           </div>
+          <span style={{ color: "var(--border-strong)" }}>|</span>
+          <input
+            className={styles.projectNameEdit}
+            value={job?.title || "Untitled Job"}
+            onChange={(e) => setJob((prev) => ({ ...prev, title: e.target.value }))}
+          />
+        </div>
+
+        <div className={styles.topCenter}>
+          <button
+            className={styles.iconBtn}
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo2 size={13} />
+          </button>
+          <button
+            className={styles.iconBtn}
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Y)"
+          >
+            <Redo2 size={13} />
+          </button>
+          <button
+            className={styles.iconBtn}
+            onClick={runCleanup}
+            title="Clean text formatting"
+          >
+            <Sparkles size={13} style={{ color: "var(--primary)" }} />
+          </button>
         </div>
 
         <div className={styles.topRight}>
-          <Tooltip text="AI Hook Generator">
-            <button className={styles.iconBtn} onClick={() => setHookModal(true)}>
-              <Wand2 size={13} /> Hook
-            </button>
-          </Tooltip>
-          <Tooltip text="Undo (Ctrl+Z)">
-            <button className={styles.iconBtn} onClick={undo} disabled={!canUndo}>
-              <Undo2 size={13} />
-            </button>
-          </Tooltip>
-          <Tooltip text="Redo (Ctrl+Shift+Z)">
-            <button className={styles.iconBtn} onClick={redo} disabled={!canRedo}>
-              <Redo2 size={13} />
-            </button>
-          </Tooltip>
-          <Tooltip text="Normalise Hinglish">
-            <button
-              className={styles.iconBtn}
-              onClick={() => {
-                runCleanup();
-                push("AI cleanup applied — Hinglish normalised");
-              }}
-            >
-              <Sparkles size={13} /> Cleanup
-            </button>
-          </Tooltip>
-          <button className={styles.saveBtn}>
-            <Save size={13} /> Save
+          <button
+            className={styles.iconBtn}
+            onClick={() => setHookModal(true)}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <Wand2 size={13} />
+            AI Hook
           </button>
-          <Tooltip text="Download SEO description for YouTube">
-            <button className={styles.iconBtn} onClick={handleSEOExport}>
-              <FileText size={13} /> SEO
+
+          <div style={{ display: "flex", gap: 2 }}>
+            <button
+              onClick={() => handleScriptChange("roman")}
+              className={`${styles.iconBtn} ${scriptMode === "roman" ? "bg-[var(--accent-dim)] border-[var(--primary)] text-[var(--primary)]" : ""}`}
+            >
+              Romanized
             </button>
-          </Tooltip>
-          <Tooltip text="Download SRT subtitles">
-            <button className={styles.srtBtn} onClick={handleSRTExport}>
-              <Download size={13} /> SRT
+            <button
+              onClick={() => handleScriptChange("native")}
+              className={`${styles.iconBtn} ${scriptMode === "native" ? "bg-[var(--accent-dim)] border-[var(--primary)] text-[var(--primary)]" : ""}`}
+            >
+              Native Script
             </button>
-          </Tooltip>
-          <Tooltip text="Translate captions to Indian languages">
-            <button className={styles.iconBtn} onClick={() => setTranslateModal(true)}>
-              <Languages size={13} /> Translate
-            </button>
-          </Tooltip>
+          </div>
+
+          <button className={styles.srtBtn} onClick={handleSRTExport}>
+            <FileText size={13} style={{ marginRight: 4 }} />
+            SRT
+          </button>
+          <button className={styles.srtBtn} onClick={handleSEOExport}>
+            <Search size={13} style={{ marginRight: 4 }} />
+            SEO Text
+          </button>
+
           <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
             {exporting ? (
-              "Exporting…"
+              <>
+                <Loader2 size={13} className="animate-spin mr-1" />
+                Exporting...
+              </>
             ) : (
               <>
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <polyline points="19 12 12 5 5 12" />
-                </svg>
-                Export
+                <Download size={13} className="mr-1" />
+                Export Video
               </>
             )}
           </button>
         </div>
-      </div>
+      </header>
 
       <div className={styles.body}>
-        <div className={styles.leftPanel}>
+        <div className={`${styles.leftPanel} ${leftPanelOpen ? styles.leftPanelOpen : ''}`}>
           <div className={styles.panelHeader}>
-            <p className={styles.panelTitle}>Captions</p>
+            <div className={styles.panelTitle}>Captions list</div>
             <div className={styles.lineToggle}>
-              {["1", "2"].map((n) => (
+              {["1", "2", "3"].map((mode) => (
                 <button
-                  key={n}
-                  className={`${styles.lineBtn} ${lineMode === n ? styles.lineBtnActive : ""}`}
-                  onClick={() => setLineMode(n)}
+                  key={mode}
+                  className={`${styles.lineBtn} ${lineMode === mode ? styles.lineBtnActive : ""}`}
+                  onClick={() => setLineMode(mode)}
                 >
-                  {n} {n === "1" ? "Line" : "Lines"}
+                  {mode} Line{mode !== "1" ? "s" : ""}
                 </button>
               ))}
             </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 4,
-              padding: "8px 12px",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <Languages size={12} style={{ color: "#6b7280", marginRight: 4 }} />
-            {[
-              { key: "roman", label: "Roman" },
-              { key: "native", label: "Native" },
-              { key: "english", label: "English" },
-            ].map((s) => (
-              <button
-                key={s.key}
-                onClick={() => handleScriptChange(s.key)}
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: 6,
-                  fontSize: 11,
-                  fontWeight: scriptMode === s.key ? 600 : 400,
-                  background: scriptMode === s.key ? "rgba(217,119,54,0.15)" : "transparent",
-                  color: scriptMode === s.key ? "#D97736" : "#6b7280",
-                  border:
-                    scriptMode === s.key
-                      ? "1px solid rgba(217,119,54,0.25)"
-                      : "1px solid transparent",
-                  cursor: "pointer",
-                  transition: "all 150ms ease",
-                }}
-              >
-                {s.label}
-              </button>
-            ))}
           </div>
 
           <div className={styles.captionList}>
@@ -866,29 +919,44 @@ function EditorPage() {
               })}
             </div>
             <div className={styles.zoomControls}>
-              <ZoomOut size={12} style={{ color: "#6b7280" }} />
+              <ZoomOut size={12} />
               <span>100%</span>
-              <ZoomIn size={12} style={{ color: "#6b7280" }} />
+              <ZoomIn size={12} />
             </div>
           </div>
 
           <div className={styles.canvas}>
-            <CaptionPlayer
-              subtitles={subtitles}
-              preset={preset}
-              videoUrl={videoUrl}
-              durationInFrames={Math.max(60, Math.ceil(totalDuration * 30))}
-              controls
-              autoPlay={false}
-              loop
-              resolution={resolution}
-              aspect={aspect}
-              lineMode={lineMode}
-            />
+            {/* Phone device mockup */}
+            <div
+              style={{
+                width: aspect === "916" || aspect === "original" ? "min(320px, 85vw)" : "100%",
+                maxWidth: "100%",
+                aspectRatio: aspect === "916" ? "9/16" : aspect === "169" ? "16/9" : aspect === "11" ? "1/1" : "auto",
+                background: "#09090b",
+                borderRadius: "min(32px, 6vw)",
+                padding: "min(10px, 2vw)",
+                border: "min(10px, 2vw) solid #1a1a1a",
+                boxShadow: "var(--shadow-deep)",
+                position: "relative",
+                overflow: "hidden"
+              }}
+            >
+              <CaptionPlayer
+                ref={playerRef}
+                subtitles={subtitles}
+                preset={preset}
+                videoUrl={videoUrl}
+                durationInFrames={Math.max(60, Math.ceil(totalDuration * 30))}
+                controls={false}
+                autoPlay={false}
+                loop
+                playbackRate={playbackRate}
+              />
+            </div>
           </div>
         </div>
 
-        <div className={styles.rightPanel}>
+        <div className={`${styles.rightPanel} ${rightPanelOpen ? styles.rightPanelOpen : ''}`}>
           <div className={styles.panelTabs}>
             {["text", "templates", "brand"].map((tab) => (
               <button
@@ -922,11 +990,11 @@ function EditorPage() {
                     textAlign: "center",
                     padding: "16px 0",
                     fontSize: 11,
-                    color: "#6b7280",
+                    color: "var(--text-secondary)",
                     lineHeight: 1.6,
                   }}
                 >
-                  <Palette size={28} style={{ color: "#27272a", marginBottom: 8 }} />
+                  <Palette size={28} style={{ color: "var(--text-tertiary)", marginBottom: 8 }} />
                   <div>No saved brand kits yet</div>
                   <div>Save your current preset as a kit</div>
                 </div>
@@ -936,13 +1004,11 @@ function EditorPage() {
                     <div
                       key={kit.id}
                       style={{
-                        background: "rgba(10,10,10,0.8)",
-                        backdropFilter: "blur(24px)",
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        background: "var(--bg-base)",
+                        border: "1px solid var(--border-subtle)",
                         borderRadius: 16,
-                        padding: "10px 12px",
-                        transition: "border-color 150ms ease",
-                        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+                        padding: "12px",
+                        boxShadow: "var(--shadow-card)",
                       }}
                     >
                       <div
@@ -953,7 +1019,7 @@ function EditorPage() {
                           marginBottom: 8,
                         }}
                       >
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>
                           {kit.name}
                         </span>
                         <Tooltip text="Delete kit">
@@ -962,15 +1028,13 @@ function EditorPage() {
                             style={{
                               background: "none",
                               border: "none",
-                              color: "#6b7280",
+                              color: "var(--text-secondary)",
                               cursor: "pointer",
                               padding: 2,
                               borderRadius: 4,
                               display: "flex",
                               transition: "color 150ms ease",
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
-                            onMouseLeave={(e) => (e.currentTarget.style.color = "#6b7280")}
                           >
                             <Trash2 size={12} />
                           </button>
@@ -983,7 +1047,7 @@ function EditorPage() {
                             height: 20,
                             borderRadius: 6,
                             background: kit.color,
-                            border: "1px solid rgba(255,255,255,0.1)",
+                            border: "1px solid var(--border-base)",
                             flexShrink: 0,
                           }}
                         />
@@ -991,50 +1055,32 @@ function EditorPage() {
                           style={{
                             flex: 1,
                             fontSize: 11,
-                            color: "#9CA3AF",
+                            color: "var(--text-secondary)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
+                            fontWeight: 600,
                           }}
                         >
                           {kit.font}
                         </div>
-                      </div>
-                      <div style={{ marginTop: 6, display: "flex", gap: 4 }}>
-                        {kit.bg && kit.bg !== "transparent" && (
-                          <div
-                            style={{
-                              width: 12,
-                              height: 12,
-                              borderRadius: 4,
-                              background: kit.bg,
-                              border: "1px solid rgba(255,255,255,0.08)",
-                            }}
-                          />
-                        )}
                       </div>
                       <button
                         onClick={() => handleApplyBrandKit(kit)}
                         style={{
                           width: "100%",
                           marginTop: 8,
-                          padding: "5px 0",
-                          borderRadius: 6,
-                          background: "rgba(217,119,54,0.1)",
-                          border: "1px solid rgba(217,119,54,0.2)",
-                          color: "#D97736",
+                          padding: "6px 0",
+                          borderRadius: 20,
+                          background: "var(--accent-dim)",
+                          border: "1px solid var(--primary)",
+                          color: "var(--primary)",
                           fontSize: 11,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           cursor: "pointer",
                           fontFamily: "inherit",
-                          transition: "background 150ms ease",
+                          transition: "all var(--transition-fast)",
                         }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = "rgba(217,119,54,0.2)")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = "rgba(217,119,54,0.1)")
-                        }
                       >
                         Apply Kit
                       </button>
@@ -1097,10 +1143,10 @@ function EditorPage() {
                     </div>
                     <div
                       className={styles.templatePreview}
-                      style={{ background: p.bg || "#111", color: p.color }}
+                      style={{ background: p.bg || "rgba(0,0,0,0.03)", color: p.color }}
                     >
                       <span
-                        style={{ fontSize: 9, color: "#6b7280", display: "block", marginBottom: 2 }}
+                        style={{ fontSize: 9, color: "var(--text-secondary)", display: "block", marginBottom: 2 }}
                       >
                         the quick
                       </span>
@@ -1108,7 +1154,7 @@ function EditorPage() {
                         {p.name.split(" ")[0].toUpperCase()}
                       </strong>
                       <span
-                        style={{ fontSize: 9, color: "#6b7280", display: "block", marginTop: 2 }}
+                        style={{ fontSize: 9, color: "var(--text-secondary)", display: "block", marginTop: 2 }}
                       >
                         fox jumps
                       </span>
@@ -1121,41 +1167,106 @@ function EditorPage() {
         </div>
       </div>
 
+      {/* Mobile panel overlays */}
+      {leftPanelOpen && (
+        <div className={styles.panelOverlay} onClick={() => setLeftPanelOpen(false)} />
+      )}
+      {rightPanelOpen && (
+        <div className={styles.panelOverlay} onClick={() => setRightPanelOpen(false)} />
+      )}
+
+      {/* Mobile panel toggle buttons */}
+      <button
+        className={styles.panelToggleLeft}
+        onClick={() => { setLeftPanelOpen((v) => !v); setRightPanelOpen(false); }}
+        title={leftPanelOpen ? 'Close captions panel' : 'Open captions panel'}
+      >
+        <PanelLeft size={14} />
+      </button>
+      <button
+        className={styles.panelToggleRight}
+        onClick={() => { setRightPanelOpen((v) => !v); setLeftPanelOpen(false); }}
+        title={rightPanelOpen ? 'Close presets panel' : 'Open presets panel'}
+      >
+        <PanelRight size={14} />
+      </button>
+
       <div className={styles.timeline}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           <Timeline
             subtitles={subtitles}
             currentTime={currentTime}
             totalDuration={totalDuration || 30}
-            onSeek={(t) => {
-              setCurrentTime(t);
-            }}
+            videoSrc={videoUrl}
+            zoom={zoom}
+            onZoomChange={setZoom}
+            onSeek={handleTimelineSeek}
             onUpdateSegment={(id, start, end) => {
-              if (typeof start === "number") updateSegmentTime(id, "start", start);
-              if (typeof end === "number") updateSegmentTime(id, "end", end);
+              updateSegment(id, start, end);
             }}
+            onSplit={handleSplitSegment}
+            onDelete={handleDeleteSegment}
+            selectedId={selectedSegId}
+            onSelectSegment={setSelectedSegId}
+            playing={playing}
           />
         </div>
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 4,
-            padding: "4px 8px",
-            borderTop: "1px solid rgba(255,255,255,0.04)",
+            gap: 6,
+            padding: "6px 20px",
+            borderTop: "1px solid var(--border-subtle)",
+            background: "var(--bg-surface)",
           }}
         >
-          <button className={styles.transportBtn} onClick={() => setCurrentTime(0)}>
+          <button className={styles.transportBtn} onClick={() => handleTimelineSeek(0)} title="Go to start">
             <SkipBack size={12} />
           </button>
-          <button className={styles.playBtn} onClick={() => setPlaying((p) => !p)}>
+          <button
+            className={styles.transportBtn}
+            onClick={() => handleTimelineSeek(Math.max(0, currentTime - 1 / 30))}
+            title="Previous frame (←)"
+          >
+            <ChevronLeft size={12} />
+          </button>
+          <button className={styles.playBtn} onClick={() => { const p = playerRef.current; if (!p) return; if (p.isPlaying()) { p.pause(); } else { p.play(); } }}>
             {playing ? <Pause size={11} /> : <Play size={11} />}
           </button>
-          <button className={styles.transportBtn} onClick={() => setCurrentTime(totalDuration)}>
+          <button
+            className={styles.transportBtn}
+            onClick={() => handleTimelineSeek(Math.min(totalDuration, currentTime + 1 / 30))}
+            title="Next frame (→)"
+          >
+            <ChevronRight size={12} />
+          </button>
+          <button className={styles.transportBtn} onClick={() => handleTimelineSeek(totalDuration)} title="Go to end">
             <SkipForward size={12} />
           </button>
           <span className={styles.timecode}>
             {fmt(currentTime)} / {fmt(totalDuration)}
+          </span>
+
+          <div style={{ flex: 1 }} />
+
+          <select
+            className={styles.speedSelect}
+            value={playbackRate}
+            onChange={(e) => setPlaybackRate(Number(e.target.value))}
+            title="Playback speed"
+          >
+            <option value={0.25}>0.25x</option>
+            <option value={0.5}>0.5x</option>
+            <option value={0.75}>0.75x</option>
+            <option value={1}>1x</option>
+            <option value={1.25}>1.25x</option>
+            <option value={1.5}>1.5x</option>
+            <option value={2}>2x</option>
+          </select>
+
+          <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontFamily: "ui-monospace, monospace", marginLeft: 4 }}>
+            Space
           </span>
         </div>
       </div>
@@ -1175,19 +1286,19 @@ function EditorPage() {
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  background: "rgba(217,119,54,0.15)",
+                  background: "var(--accent-dim)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Wand2 size={16} style={{ color: "#D97736" }} />
+                <Wand2 size={16} style={{ color: "var(--primary)" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#fff" }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-serif)", italic: "true" }}>
                   AI Hook Generator
                 </h3>
-                <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", fontWeight: 500 }}>
                   Rewrite your opening 30 seconds
                 </p>
               </div>
@@ -1197,13 +1308,13 @@ function EditorPage() {
                   setGeneratedHook(null);
                 }}
                 style={{
-                  background: "rgba(255,255,255,0.06)",
+                  background: "rgba(0,0,0,0.03)",
                   border: "none",
-                  color: "#6b7280",
+                  color: "var(--text-secondary)",
                   cursor: "pointer",
                   width: 28,
                   height: 28,
-                  borderRadius: 6,
+                  borderRadius: 9999,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1215,29 +1326,29 @@ function EditorPage() {
 
             {!generatedHook ? (
               <div>
-                <p style={{ fontSize: 12, color: "#9CA3AF", marginBottom: 12, lineHeight: 1.5 }}>
-                  Your opening hook decides everything. AI analyzes your transcript and rewrites the
-                  first line to maximize retention.
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16, lineHeight: 1.5 }}>
+                  Your opening hook decides everything. AI analyzes your transcript and rewrites the first line to maximize retention.
                 </p>
                 <div
                   style={{
-                    background: "#0A0A0A",
-                    borderRadius: 16,
-                    padding: 12,
+                    background: "var(--bg-base)",
+                    borderRadius: 12,
+                    padding: 14,
                     marginBottom: 16,
                     fontSize: 12,
-                    color: "#6b7280",
+                    color: "var(--text-secondary)",
                     maxHeight: 120,
                     overflow: "auto",
                     lineHeight: 1.6,
+                    border: "1px solid var(--border-subtle)",
                   }}
                 >
                   <div
                     style={{
-                      color: "#9CA3AF",
+                      color: "var(--primary)",
                       fontSize: 10,
-                      fontWeight: 600,
-                      marginBottom: 4,
+                      fontWeight: 700,
+                      marginBottom: 6,
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
                     }}
@@ -1252,15 +1363,15 @@ function EditorPage() {
                   disabled={generatingHook}
                   style={{
                     width: "100%",
-                    padding: "10px 0",
-                    borderRadius: 16,
-                    background: generatingHook ? "#27272a" : "#D97736",
-                    color: generatingHook ? "#6b7280" : "#030303",
+                    padding: "12px 0",
+                    borderRadius: 24,
+                    background: generatingHook ? "var(--border-strong)" : "var(--primary)",
+                    color: "#ffffff",
                     fontSize: 13,
                     fontWeight: 700,
                     border: "none",
                     cursor: generatingHook ? "not-allowed" : "pointer",
-                    transition: "background 150ms ease",
+                    transition: "all var(--transition-fast)",
                   }}
                 >
                   {generatingHook ? "Generating..." : "Generate Hook"}
@@ -1270,18 +1381,18 @@ function EditorPage() {
               <div>
                 <div
                   style={{
-                    background: "rgba(217,119,54,0.08)",
-                    border: "1px solid rgba(217,119,54,0.2)",
+                    background: "var(--accent-dim)",
+                    border: "1px solid var(--primary)",
                     borderRadius: 16,
-                    padding: 14,
+                    padding: 16,
                     marginBottom: 16,
                   }}
                 >
                   <div
                     style={{
-                      color: "#D97736",
+                      color: "var(--primary)",
                       fontSize: 10,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       marginBottom: 6,
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
@@ -1292,8 +1403,8 @@ function EditorPage() {
                   <p
                     style={{
                       fontSize: 15,
-                      color: "#fff",
-                      fontWeight: 600,
+                      color: "var(--text-primary)",
+                      fontWeight: 700,
                       margin: 0,
                       lineHeight: 1.5,
                     }}
@@ -1306,15 +1417,15 @@ function EditorPage() {
                     onClick={applyHook}
                     style={{
                       flex: 1,
-                      padding: "10px 0",
-                      borderRadius: 16,
-                      background: "#D97736",
-                      color: "#030303",
+                      padding: "12px 0",
+                      borderRadius: 24,
+                      background: "var(--primary)",
+                      color: "#ffffff",
                       fontSize: 13,
                       fontWeight: 700,
                       border: "none",
                       cursor: "pointer",
-                      transition: "background 150ms ease",
+                      transition: "all var(--transition-fast)",
                     }}
                   >
                     Apply Hook
@@ -1324,15 +1435,15 @@ function EditorPage() {
                     disabled={generatingHook}
                     style={{
                       flex: 1,
-                      padding: "10px 0",
-                      borderRadius: 16,
-                      background: "rgba(255,255,255,0.06)",
-                      color: "#9CA3AF",
+                      padding: "12px 0",
+                      borderRadius: 24,
+                      background: "var(--bg-base)",
+                      color: "var(--text-secondary)",
                       fontSize: 13,
-                      fontWeight: 600,
-                      border: "1px solid rgba(255,255,255,0.08)",
+                      fontWeight: 700,
+                      border: "1px solid var(--border-base)",
                       cursor: "pointer",
-                      transition: "background 150ms ease",
+                      transition: "all var(--transition-fast)",
                     }}
                   >
                     Regenerate
@@ -1348,14 +1459,15 @@ function EditorPage() {
               }}
               style={{
                 width: "100%",
-                marginTop: 8,
+                marginTop: 10,
                 padding: "8px 0",
-                borderRadius: 16,
+                borderRadius: 24,
                 background: "transparent",
-                color: "#6b7280",
+                color: "var(--text-tertiary)",
                 fontSize: 12,
                 border: "none",
                 cursor: "pointer",
+                fontWeight: 600,
               }}
             >
               Cancel
@@ -1379,19 +1491,19 @@ function EditorPage() {
                   width: 32,
                   height: 32,
                   borderRadius: 16,
-                  background: "rgba(59,130,246,0.15)",
+                  background: "var(--accent-dim)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Languages size={16} style={{ color: "#3b82f6" }} />
+                <Languages size={16} style={{ color: "var(--primary)" }} />
               </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#fff" }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-serif)", italic: "true" }}>
                   Auto-Translate
                 </h3>
-                <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)" }}>
                   Select a target Indian language
                 </p>
               </div>
@@ -1401,13 +1513,13 @@ function EditorPage() {
                   setTranslateLang(null);
                 }}
                 style={{
-                  background: "rgba(255,255,255,0.06)",
+                  background: "rgba(0,0,0,0.03)",
                   border: "none",
-                  color: "#6b7280",
+                  color: "var(--text-secondary)",
                   cursor: "pointer",
                   width: 28,
                   height: 28,
-                  borderRadius: 6,
+                  borderRadius: 9999,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1434,27 +1546,15 @@ function EditorPage() {
                     style={{
                       padding: "10px 12px",
                       borderRadius: 16,
-                      background: selected ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.03)",
+                      background: selected ? "var(--accent-dim)" : "rgba(0,0,0,0.02)",
                       border: selected
-                        ? "1px solid rgba(59,130,246,0.35)"
-                        : "1px solid rgba(255,255,255,0.08)",
+                        ? "1px solid var(--primary)"
+                        : "1px solid var(--border-base)",
                       cursor: "pointer",
                       textAlign: "left",
                       fontFamily: "inherit",
-                      transition: "all 150ms ease",
+                      transition: "all var(--transition-fast)",
                       position: "relative",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!selected) {
-                        e.target.style.background = "rgba(255,255,255,0.06)";
-                        e.target.style.borderColor = "rgba(255,255,255,0.12)";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!selected) {
-                        e.target.style.background = "rgba(255,255,255,0.03)";
-                        e.target.style.borderColor = "rgba(255,255,255,0.08)";
-                      }
                     }}
                   >
                     {selected && (
@@ -1466,7 +1566,7 @@ function EditorPage() {
                           width: 16,
                           height: 16,
                           borderRadius: 9999,
-                          background: "#3b82f6",
+                          background: "var(--primary)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
@@ -1475,10 +1575,10 @@ function EditorPage() {
                         <Check size={10} strokeWidth={3} style={{ color: "#fff" }} />
                       </div>
                     )}
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "#fff", marginBottom: 2 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
                       {lang.name}
                     </div>
-                    <div style={{ fontSize: 11, color: "#6b7280" }}>{lang.native}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{lang.native}</div>
                   </button>
                 );
               })}
@@ -1492,16 +1592,16 @@ function EditorPage() {
                 }}
                 style={{
                   flex: 1,
-                  padding: "10px 0",
-                  borderRadius: 16,
-                  background: "rgba(255,255,255,0.06)",
-                  color: "#9CA3AF",
+                  padding: "12px 0",
+                  borderRadius: 24,
+                  background: "var(--bg-base)",
+                  color: "var(--text-secondary)",
                   fontSize: 13,
-                  fontWeight: 600,
-                  border: "1px solid rgba(255,255,255,0.08)",
+                  fontWeight: 700,
+                  border: "1px solid var(--border-base)",
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  transition: "background 150ms ease",
+                  transition: "all var(--transition-fast)",
                 }}
               >
                 Cancel
@@ -1511,16 +1611,16 @@ function EditorPage() {
                 disabled={!translateLang}
                 style={{
                   flex: 1,
-                  padding: "10px 0",
-                  borderRadius: 16,
-                  background: translateLang ? "#3b82f6" : "#27272a",
-                  color: translateLang ? "#fff" : "#6b7280",
+                  padding: "12px 0",
+                  borderRadius: 24,
+                  background: translateLang ? "var(--primary)" : "var(--border-strong)",
+                  color: "#ffffff",
                   fontSize: 13,
                   fontWeight: 700,
                   border: "none",
                   cursor: translateLang ? "pointer" : "not-allowed",
                   fontFamily: "inherit",
-                  transition: "background 150ms ease",
+                  transition: "all var(--transition-fast)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1528,67 +1628,28 @@ function EditorPage() {
                 }}
               >
                 <Languages size={14} />
-                Translate to selected
+                Translate
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          zIndex: 200,
-          pointerEvents: "none",
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-base)",
+            borderRadius: 20,
+            padding: "12px 20px",
+            fontSize: 13,
+            color: "var(--text-primary)",
+            boxShadow: "var(--shadow-elevated)",
+            fontFamily: "var(--font-sans)",
+          },
         }}
-      >
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            style={{
-              background: "rgba(10,10,10,0.8)",
-              backdropFilter: "blur(24px)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 16,
-              padding: "10px 16px",
-              fontSize: 13,
-              color: "#fff",
-              boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-              pointerEvents: "auto",
-              animation: "slideIn 0.25s ease-out",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <Check size={14} style={{ color: "#22c55e", flexShrink: 0 }} />
-            {t.msg}
-          </div>
-        ))}
-      </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateX(16px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        .${styles.wordChip}:hover {
-          background: rgba(217,119,54,0.3) !important;
-        }
-      `}</style>
+      />
     </div>
   );
 }

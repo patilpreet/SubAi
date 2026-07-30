@@ -28,10 +28,13 @@
 
 .solid {
   background: var(--primary);
-  color: #030303;
+  color: #FFFFFF;
+  box-shadow: var(--shadow-card);
 }
 .solid:hover:not(:disabled) {
-  box-shadow: var(--accent-glow);
+  background: var(--tertiary);
+  box-shadow: 0 8px 20px rgba(217, 119, 54, 0.2);
+  transform: translateY(-1px);
 }
 
 .outline {

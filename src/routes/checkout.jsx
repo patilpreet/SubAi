@@ -127,16 +127,16 @@ function CheckoutPage() {
   }
 
   return (
-    <div className="bg-[#0A0A0A] text-white min-h-screen font-sans">
+    <div className="bg-[var(--bg-base)] text-[var(--text-primary)] min-h-screen font-sans">
       <header className="fixed top-0 left-0 right-0 z-50">
         <div className="mx-auto max-w-7xl px-4 md:px-6 pt-4">
-          <div className="flex items-center justify-between rounded-2xl border border-white/[0.08] bg-[#111114]/72 backdrop-blur-xl px-4 md:px-5 py-3">
+          <div className="flex items-center justify-between rounded-2xl border border-[var(--border-base)] bg-[var(--bg-surface)]/72 backdrop-blur-xl px-4 md:px-5 py-3">
             <Link className="flex items-center shrink-0 group" to="/">
               <img src="/subai-logo.png" alt="SubAI" className="h-20 w-auto object-contain" />
             </Link>
             <Link
               to="/pricing"
-              className="px-4 py-2 text-[13px] font-bold text-[#030303] bg-[#D97736] hover:bg-[#FF9A4D] rounded-full transition-all duration-150"
+              className="px-4 py-2 text-[13px] font-bold text-[var(--text-primary)] bg-[var(--primary)] hover:bg-[var(--tertiary)] rounded-full transition-all duration-150"
             >
               Plans
             </Link>
@@ -147,7 +147,7 @@ function CheckoutPage() {
       <section className="pt-36 pb-24 px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl font-black tracking-tight mb-2">Checkout</h1>
-          <p className="text-zinc-400 text-sm mb-8">
+          <p className="text-[var(--text-secondary)] text-sm mb-8">
             Choose a plan and pay via UPI, card, or netbanking.
           </p>
 
@@ -158,22 +158,22 @@ function CheckoutPage() {
                 onClick={() => setSelectedPlan(p.id)}
                 className={`w-full flex items-center gap-3 p-3.5 rounded-[16px] border text-left transition-all duration-150 ${
                   selectedPlan === p.id
-                    ? "border-[#D97736]/40 bg-[#D97736]/[0.06]"
-                    : "border-white/[0.08] bg-white/[0.02]"
+                    ? "border-[var(--primary)]/40 bg-[var(--accent-dim)]"
+                    : "border-[var(--border-base)] bg-[var(--bg-surface)]/20"
                 }`}
               >
                 <div
                   className={`w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 ${
-                    selectedPlan === p.id ? "border-[#D97736]" : "border-zinc-600"
+                    selectedPlan === p.id ? "border-[var(--primary)]" : "border-[var(--border-strong)]"
                   }`}
                 >
-                  {selectedPlan === p.id && <div className="w-2 h-2 rounded-full bg-[#D97736]" />}
+                  {selectedPlan === p.id && <div className="w-2 h-2 rounded-full bg-[var(--primary)]" />}
                 </div>
                 <div className="flex-1">
-                  <div className="font-semibold text-sm text-white">{p.label}</div>
-                  <div className="text-xs text-zinc-500">{p.desc}</div>
+                  <div className="font-semibold text-sm text-[var(--text-primary)]">{p.label}</div>
+                  <div className="text-xs text-[var(--text-secondary)]">{p.desc}</div>
                 </div>
-                <div className="font-bold text-base text-[#D97736]">{p.price}</div>
+                <div className="font-bold text-base text-[var(--primary)]">{p.price}</div>
               </button>
             ))}
           </div>
@@ -195,8 +195,8 @@ function CheckoutPage() {
             disabled={loading}
             className={`w-full py-3.5 rounded-full text-[15px] font-bold border-none transition-all duration-150 ${
               loading
-                ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                : "bg-[#D97736] text-[#030303] hover:bg-[#FF9A4D] cursor-pointer"
+                ? "bg-[var(--bg-surface)] text-[var(--text-secondary)] cursor-not-allowed"
+                : "bg-[var(--primary)] text-[var(--text-primary)] hover:bg-[var(--tertiary)] cursor-pointer"
             }`}
           >
             {loading
@@ -204,7 +204,7 @@ function CheckoutPage() {
               : `Pay \u20B9${getPlanConfig(selectedPlan)?.amount || 0}`}
           </button>
 
-          <p className="text-[#6b7280] text-xs text-center mt-4">
+          <p className="text-[var(--text-secondary)] text-xs text-center mt-4">
             Secure payments via Razorpay. UPI, cards, netbanking accepted.
           </p>
         </div>

@@ -13,6 +13,9 @@ import {
 } from "../lib/jobsService";
 import { extractVideoFrame } from "../lib/grok";
 import { analyzeWithGrokServer, transcribeFromStorage } from "../lib/grokServer";
+import { transcribeWithSarvam } from "../lib/sarvamServer";
+import { transcribeWithGemini } from "../lib/geminiServer";
+import { useTheme } from "../hooks/useTheme";
 import {
   Home,
   Search,
@@ -30,11 +33,14 @@ import {
   LogOut,
   Trash2,
   Clock,
-  Calendar,
   X,
   Loader2,
   Shield,
+  Menu,
+  Moon,
+  Sun,
 } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
   ssr: false,
@@ -63,20 +69,20 @@ function DashboardPage() {
   const [jobsLoading, setJobsLoading] = useState(true);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [toasts, setToasts] = useState([]);
 
   const [modalFile, setModalFile] = useState(null);
   const [modalVideoUrl, setModalVideoUrl] = useState(null);
   const [language, setLanguage] = useState("auto");
   const [writingSystem, setWritingSystem] = useState("roman");
   const [transcribing, setTranscribing] = useState(false);
+  const [provider, setProvider] = useState("groq");
 
   const fileInputRef = useRef(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isDark, toggle: toggleTheme } = useTheme();
 
   const push = useCallback((msg) => {
-    const id = crypto.randomUUID();
-    setToasts((t) => [...t, { id, msg }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+    toast(msg, { duration: 4000 });
   }, []);
 
   useEffect(() => {
@@ -139,7 +145,7 @@ function DashboardPage() {
         const result = await analyzeWithGrokServer({ data: { imageBase64: frame } });
         if (result.ok && result.description) {
           aiDescription = result.description;
-          push(`AI: "${aiDescription}"`);
+          push(`AI description generated: "${aiDescription}"`);
         }
         URL.revokeObjectURL(videoEl.src);
       } catch (e) {
@@ -147,19 +153,44 @@ function DashboardPage() {
       }
 
       let extractedSubtitles = [];
+      let transRes;
       try {
-        push("Transcribing with Groq Whisper...");
         const fileUrl = await getVideoUrl(storageKey);
-        const transRes = await transcribeFromStorage({
-          data: {
-            fileUrl,
-            fileName: file.name,
-            mimeType: file.type || "video/mp4",
-          },
-        });
+
+        if (provider === "sarvam") {
+          push("Transcribing with SarvamAI...");
+          transRes = await transcribeWithSarvam({
+            data: {
+              fileUrl,
+              fileName: file.name,
+              mimeType: file.type || "video/mp4",
+              language: language === "auto" ? "hinglish" : language,
+            },
+          });
+        } else if (provider === "gemini") {
+          push("Transcribing with Google Gemini...");
+          transRes = await transcribeWithGemini({
+            data: {
+              fileUrl,
+              fileName: file.name,
+              mimeType: file.type || "video/mp4",
+              language: language === "auto" ? "hinglish" : language,
+            },
+          });
+        } else {
+          push("Transcribing with Groq Whisper...");
+          transRes = await transcribeFromStorage({
+            data: {
+              fileUrl,
+              fileName: file.name,
+              mimeType: file.type || "video/mp4",
+            },
+          });
+        }
+
         if (transRes.ok && transRes.subtitles.length > 0) {
           extractedSubtitles = transRes.subtitles;
-          push(`${extractedSubtitles.length} caption segments ready`);
+          push(`${extractedSubtitles.length} segments transcribed`);
         } else if (transRes.error) {
           push("Transcription issue: " + transRes.error);
         }
@@ -169,8 +200,15 @@ function DashboardPage() {
       }
 
       if (extractedSubtitles.length === 0) {
+        const detail = transRes?.error ? ` ${transRes.error}` : "";
+        const keyName =
+          provider === "sarvam"
+            ? "SARVAM_API_KEY"
+            : provider === "gemini"
+              ? "GEMINI_API_KEY"
+              : "GROQ_API_KEY";
         throw new Error(
-          "Transcription returned no captions. Check your GROQ_API_KEY and try again.",
+          `Transcription returned no captions.${detail}`,
         );
       }
 
@@ -187,7 +225,7 @@ function DashboardPage() {
 
       await completeJob(job.id);
       setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, status: "completed" } : j)));
-      push("Transcription complete. Ready to edit.");
+      push("Transcription complete.");
       navigate({ to: "/editor/$jobId", params: { jobId: job.id } });
 
       setModalFile(null);
@@ -244,8 +282,8 @@ function DashboardPage() {
             gap: 12,
           }}
         >
-          <Loader2 size={20} className="animate-spin" style={{ color: "#D97736" }} />
-          <span style={{ color: "#9CA3AF", fontSize: 13 }}>Loading your dashboard...</span>
+          <Loader2 size={24} className="animate-spin" style={{ color: "var(--primary)" }} />
+          <span style={{ color: "var(--text-secondary)", fontSize: 13, fontWeight: 500 }}>Loading your dashboard...</span>
         </div>
       </div>
     );
@@ -256,32 +294,27 @@ function DashboardPage() {
       <style>{`
         .main-scroll::-webkit-scrollbar { width: 6px; }
         .main-scroll::-webkit-scrollbar-track { background: transparent; }
-        .main-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
-        .main-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-        @keyframes toastIn {
-          from { opacity: 0; transform: translateX(20px) scale(0.95); }
-          to { opacity: 1; transform: translateX(0) scale(1); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .toast-enter { animation: toastIn 0.25s ease-out; }
-        .project-card-enter { animation: fadeIn 0.3s ease-out; }
-        @media (max-width: 768px) {
-          .delete-project-btn { opacity: 1 !important; color: #ef4444 !important; }
+        .main-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.06); border-radius: 3px; }
+        .main-scroll::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.12); }
+        .project-card-enter { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .delete-project-btn { opacity: 1 !important; color: #ef4444 !important; }
+        @media (min-width: 769px) {
+          .delete-project-btn { opacity: 0; }
+          .project-card:hover .delete-project-btn { opacity: 1; }
         }
       `}</style>
 
-      <aside className={styles.sidebar}>
+      {/* Mobile sidebar overlay */}
+      {sidebarOpen && <div className={styles.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
+
+      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
         <div className={styles.sidebarBrand}>
           <div className={styles.sidebarLogo}>
             <img
               src="/subai-logo.png"
               alt="SubAI"
-              style={{ height: 40, width: "auto", objectFit: "contain" }}
+              style={{ height: 32, width: "auto", objectFit: "contain" }}
             />
           </div>
         </div>
@@ -338,9 +371,9 @@ function DashboardPage() {
             <Link
               to="/admin"
               className={styles.navItem}
-              style={{ color: "#D97736", fontWeight: 600 }}
+              style={{ color: "var(--primary)", fontWeight: 600 }}
             >
-              <Shield size={14} className={styles.navIcon} style={{ color: "#D97736" }} />
+              <Shield size={14} className={styles.navIcon} style={{ color: "var(--primary)" }} />
               Admin Panel
             </Link>
           )}
@@ -363,7 +396,7 @@ function DashboardPage() {
           <div
             style={{
               height: 4,
-              background: "rgba(255,255,255,0.06)",
+              background: "rgba(0,0,0,0.06)",
               borderRadius: 4,
               marginBottom: 8,
               overflow: "hidden",
@@ -373,14 +406,14 @@ function DashboardPage() {
               style={{
                 width: "0%",
                 height: "100%",
-                background: "#D97736",
+                background: "var(--primary)",
                 borderRadius: 4,
                 transition: "width 150ms ease",
               }}
             />
           </div>
           <div className={styles.usageReset}>Allowance resets in 25 days</div>
-          <button className={styles.upgradeNowBtn}>Upgrade Now</button>
+          <button className={styles.upgradeNowBtn} onClick={() => navigate({ to: "/pricing" })}>Upgrade Now</button>
         </div>
 
         <div className={styles.userCard}>
@@ -401,14 +434,28 @@ function DashboardPage() {
 
       <main className={`${styles.main} main-scroll`}>
         <div className={styles.topBar}>
-          <div>
-            <h1 className={styles.greeting}>Good to see you, {userName}</h1>
-            <p className={styles.greetingSub}>Create, manage and export your captioned videos</p>
+          <div className={styles.topBarLeft}>
+            <button className={styles.mobileMenuBtn} onClick={() => setSidebarOpen(true)}>
+              <Menu size={18} />
+            </button>
+            <div>
+              <h1 className={styles.greeting}>Good to see you, {userName}</h1>
+              <p className={styles.greetingSub}>Create, manage and export your captioned videos</p>
+            </div>
           </div>
-          <button className={styles.newProjectBtn} onClick={() => fileInputRef.current?.click()}>
-            <Plus size={14} />
-            New Project
-          </button>
+          <div className={styles.topBarRight}>
+            <button
+              onClick={toggleTheme}
+              className={styles.themeToggle}
+              title={isDark ? "Light mode" : "Dark mode"}
+            >
+              {isDark ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+            <button className={styles.newProjectBtn} onClick={() => fileInputRef.current?.click()}>
+              <Plus size={14} />
+              <span className="hide-mobile">New Project</span>
+            </button>
+          </div>
         </div>
 
         <div className={styles.sectionLabel}>Upload a Video</div>
@@ -439,18 +486,19 @@ function DashboardPage() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "rgba(217,119,54,0.04)",
-                zIndex: 1,
+                background: "rgba(255,255,255,0.85)",
+                backdropFilter: "blur(4px)",
+                zIndex: 10,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
               <div
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}
               >
-                <Loader2 size={24} className="animate-spin" style={{ color: "#D97736" }} />
-                <span style={{ fontSize: 12, color: "#D97736", fontWeight: 600 }}>
+                <Loader2 size={28} className="animate-spin" style={{ color: "var(--primary)" }} />
+                <span style={{ fontSize: 13, color: "var(--primary)", fontWeight: 700 }}>
                   Processing your video...
                 </span>
               </div>
@@ -479,7 +527,7 @@ function DashboardPage() {
               display: "flex",
               gap: 6,
               justifyContent: "center",
-              marginTop: 6,
+              marginTop: 10,
               position: "relative",
               zIndex: 0,
               opacity: uploading ? 0.3 : 1,
@@ -490,12 +538,13 @@ function DashboardPage() {
                 key={fmt}
                 style={{
                   fontSize: 10,
-                  color: "#6b7280",
-                  background: "rgba(255,255,255,0.04)",
-                  padding: "2px 8px",
-                  borderRadius: 4,
+                  color: "var(--text-secondary)",
+                  background: "rgba(0,0,0,0.03)",
+                  padding: "3px 10px",
+                  borderRadius: 20,
                   fontWeight: 600,
                   letterSpacing: "0.04em",
+                  border: "1px solid var(--border-subtle)",
                 }}
               >
                 {fmt}
@@ -523,31 +572,32 @@ function DashboardPage() {
 
         {jobsLoading ? (
           <div className={styles.projectsGrid}>
-            {[1, 2, 3].map((n) => (
+            {[1, 2, 3, 4].map((n) => (
               <div key={n} className={styles.projectCard} style={{ pointerEvents: "none" }}>
                 <div
                   className={styles.projectThumb}
                   style={{
-                    background: "#1a1a1e",
+                    height: "150px",
+                    background: "rgba(0,0,0,0.02)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                   }}
                 >
-                  <Loader2 size={20} className="animate-spin" style={{ color: "#27272a" }} />
+                  <Loader2 size={20} className="animate-spin" style={{ color: "var(--text-tertiary)" }} />
                 </div>
                 <div className={styles.projectInfo}>
                   <div
                     style={{
                       height: 14,
                       width: "60%",
-                      background: "#1a1a1e",
+                      background: "rgba(0,0,0,0.03)",
                       borderRadius: 4,
                       marginBottom: 8,
                     }}
                   />
                   <div
-                    style={{ height: 10, width: "40%", background: "#1a1a1e", borderRadius: 4 }}
+                    style={{ height: 10, width: "40%", background: "rgba(0,0,0,0.03)", borderRadius: 4 }}
                   />
                 </div>
               </div>
@@ -558,119 +608,98 @@ function DashboardPage() {
             <div className={styles.projectsEmptyIcon}>
               <Film size={20} />
             </div>
-            <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14, color: "#9CA3AF" }}>
+            <div style={{ fontWeight: 700, marginBottom: 4, fontSize: 14, color: "var(--text-secondary)" }}>
               No projects yet
             </div>
-            <div style={{ fontSize: 12, color: "#6b7280" }}>Upload a video to get started</div>
+            <div style={{ fontSize: 12, color: "var(--text-tertiary)", fontWeight: 500 }}>Upload a video to get started</div>
           </div>
         ) : (
           <div className={styles.projectsGrid}>
-            {jobs.map((job, idx) => (
-              <Link
-                key={job.id}
-                to="/editor/$jobId"
-                params={{ jobId: job.id }}
-                className={styles.projectCard}
-                style={{ animationDelay: `${idx * 40}ms` }}
-              >
+            {jobs.map((job, idx) => {
+              const thumbHeight = (idx % 3 === 0) ? "170px" : (idx % 3 === 1) ? "130px" : "210px";
+              return (
                 <div
-                  className={styles.projectThumb}
-                  style={{
-                    background: `linear-gradient(135deg, ${job.thumbColor || job.thumb_color || "#27272a"}22, #111114)`,
-                  }}
+                  key={job.id}
+                  className={`${styles.projectCard} project-card-enter`}
+                  style={{ animationDelay: `${idx * 40}ms` }}
                 >
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.3)"
-                    strokeWidth="1.5"
+                  <Link
+                    to="/editor/$jobId"
+                    params={{ jobId: job.id }}
+                    style={{ display: "block", textDecoration: "none", color: "inherit" }}
                   >
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
-                </div>
-                <div className={styles.projectInfo}>
-                  <p className={styles.projectTitle}>{job.title}</p>
-                  <div className={styles.projectMeta}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span>
-                        {job.language}
-                        {job.duration && job.duration !== "—" ? (
-                          <>
-                            <span style={{ margin: "0 4px", color: "#3f3f46" }}>·</span>
-                            <Clock
-                              size={10}
-                              style={{
-                                display: "inline",
-                                verticalAlign: "middle",
-                                marginRight: 2,
-                                opacity: 0.5,
-                              }}
-                            />
-                            {job.duration}
-                          </>
-                        ) : null}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {job.createdAt && (
-                        <span
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 3,
-                            color: "#6b7280",
-                            fontSize: 10,
-                          }}
+                    <div
+                      className={styles.projectThumb}
+                      style={{
+                        height: thumbHeight,
+                        background: `linear-gradient(135deg, ${job.thumbColor || job.thumb_color || "#D97736"}12, var(--bg-overlay))`,
+                      }}
+                    >
+                      <div className="absolute top-3 left-3 bg-[var(--bg-surface)]/90 backdrop-blur-md border border-[var(--border-base)] rounded-full px-2.5 py-0.5 text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+                        Hinglish • 9:16
+                      </div>
+                      <div className="w-9 h-9 rounded-full bg-[var(--bg-surface)]/90 shadow flex items-center justify-center text-[var(--primary)] hover:scale-105 transition-transform">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                          className="ml-0.5"
                         >
-                          <Calendar size={9} />
-                          {formatDate(job.createdAt)}
-                        </span>
-                      )}
-                      <span
-                        className={`${styles.statusBadge} ${job.status === "completed" ? styles.statusCompleted : styles.statusProcessing}`}
-                      >
-                        {job.status === "completed" ? "Completed" : "Processing"}
-                      </span>
+                          <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
+                    <div className={styles.projectInfo}>
+                      <p className={styles.projectTitle}>{job.title}</p>
+                      <div className={styles.projectMeta}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span className="font-semibold text-xs capitalize text-[var(--text-secondary)]">
+                            {job.language === "auto" ? "Hinglish" : job.language}
+                          </span>
+                          {job.duration && job.duration !== "—" && (
+                            <>
+                              <span style={{ color: "var(--border-strong)" }}>·</span>
+                              <Clock size={10} style={{ opacity: 0.8 }} />
+                              <span className="text-[10px] font-medium">{job.duration}</span>
+                            </>
+                          )}
+                        </div>
+                        <span
+                          className={`${styles.statusBadge} ${job.status === "completed" ? styles.statusCompleted : styles.statusProcessing}`}
+                        >
+                          {job.status === "completed" ? "Ready" : "In Progress"}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                  <button
+                    className={`${styles.deleteProjectBtn} delete-project-btn`}
+                    onClick={(e) => handleDelete(e, job.id)}
+                    title="Delete project"
+                    style={{
+                      position: "absolute",
+                      top: 10,
+                      right: 10,
+                      background: "rgba(255,255,255,0.9)",
+                      border: "1px solid var(--border-subtle)",
+                      borderRadius: 9999,
+                      width: 26,
+                      height: 26,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      color: "var(--text-secondary)",
+                      transition: "all var(--transition-fast)",
+                      zIndex: 2,
+                    }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
-                <button
-                  className={`${styles.deleteProjectBtn} delete-project-btn`}
-                  onClick={(e) => handleDelete(e, job.id)}
-                  title="Delete project"
-                  style={{
-                    position: "absolute",
-                    top: 8,
-                    right: 8,
-                    background: "rgba(0,0,0,0.5)",
-                    border: "none",
-                    borderRadius: 6,
-                    width: 28,
-                    height: 28,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    color: "#9CA3AF",
-                    opacity: 0,
-                    transition: "opacity 150ms ease, color 150ms ease",
-                    zIndex: 2,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.opacity = "1";
-                    e.currentTarget.style.color = "#ef4444";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.opacity = "0";
-                    e.currentTarget.style.color = "#9CA3AF";
-                  }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -702,20 +731,12 @@ function DashboardPage() {
                 justifyContent: "center",
                 width: 28,
                 height: 28,
-                borderRadius: 6,
-                background: "rgba(255,255,255,0.06)",
-                border: "none",
-                color: "#9CA3AF",
+                borderRadius: 9999,
+                background: "rgba(0,0,0,0.03)",
+                border: "1px solid var(--border-base)",
+                color: "var(--text-secondary)",
                 cursor: "pointer",
-                transition: "background 150ms ease, color 150ms ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.12)";
-                e.currentTarget.style.color = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                e.currentTarget.style.color = "#9CA3AF";
+                transition: "all var(--transition-fast)",
               }}
             >
               <X size={14} />
@@ -737,13 +758,13 @@ function DashboardPage() {
             <div className={styles.readyBadge}>
               {transcribing ? (
                 <>
-                  <Loader2 size={13} className="animate-spin" />
-                  Processing...
+                  <Loader2 size={13} className="animate-spin mr-1.5" />
+                  Transcribing with model...
                 </>
               ) : (
                 <>
-                  <CheckCircle size={13} />
-                  Ready for processing
+                  <CheckCircle size={13} className="mr-1.5" />
+                  Ready for transcription
                 </>
               )}
             </div>
@@ -827,6 +848,41 @@ function DashboardPage() {
               </div>
             </div>
 
+            <div className={styles.langSettings}>
+              <div className={styles.langSettingsHead}>
+                <div className={styles.langSettingsIcon}>
+                  <Zap size={16} />
+                </div>
+                <div>
+                  <p className={styles.langSettingsTitle}>Transcription Provider</p>
+                  <p className={styles.langSettingsSub}>
+                    Choose between Groq (Whisper), SarvamAI, or Google Gemini
+                  </p>
+                </div>
+              </div>
+              <div className={styles.langGrid}>
+                <div className={styles.langField}>
+                  <select
+                    className={styles.langSelect}
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value)}
+                    disabled={transcribing}
+                  >
+                    <option value="groq">Groq (Whisper) — Fast, global</option>
+                    <option value="sarvam">SarvamAI — Best for Indian languages</option>
+                    <option value="gemini">Google Gemini — Multilingual AI</option>
+                  </select>
+                  <div className={styles.langSelectHint}>
+                    {provider === "sarvam"
+                      ? "Native Hinglish support with codemix mode"
+                      : provider === "gemini"
+                        ? "Gemini understands Hinglish & code-mixed speech natively"
+                        : "General-purpose transcription, requires API key"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <button
               className={styles.generateBtn}
               onClick={handleGenerate}
@@ -839,7 +895,7 @@ function DashboardPage() {
               {transcribing || uploading ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  Processing...
+                  Generating captions...
                 </>
               ) : (
                 <>
@@ -862,48 +918,21 @@ function DashboardPage() {
         </div>
       )}
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: 20,
-          right: 20,
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-          zIndex: 200,
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: "var(--bg-surface)",
+            border: "1px solid var(--border-base)",
+            borderRadius: 20,
+            padding: "12px 20px",
+            fontSize: 13,
+            color: "var(--text-primary)",
+            boxShadow: "var(--shadow-elevated)",
+            fontFamily: "var(--font-sans)",
+          },
         }}
-      >
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className="toast-enter"
-            style={{
-              background: "rgba(10,10,10,0.8)",
-              backdropFilter: "blur(24px)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 16,
-              padding: "10px 16px",
-              fontSize: 13,
-              color: "#fff",
-              boxShadow: "rgba(0,0,0,0.25) 0px 25px 50px -12px",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <div
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 9999,
-                background: "#D97736",
-                flexShrink: 0,
-              }}
-            />
-            {t.msg}
-          </div>
-        ))}
-      </div>
+      />
     </div>
   );
 }

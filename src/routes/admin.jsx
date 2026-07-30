@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useAuthStore } from "../lib/authStore";
+import styles from "./Admin.module.css";
 import {
   getAdminStats,
   getAdminUsers,
@@ -87,10 +88,10 @@ function StatCard({ label, value, icon, color = "#D97736", sub }) {
   return (
     <div
       style={{
-        background: "rgba(10,10,10,0.8)",
+        background: "var(--bg-surface)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        border: "1px solid rgba(255,255,255,0.08)",
+        border: "1px solid var(--border-base)",
         borderRadius: 16,
         padding: "20px 22px",
         display: "flex",
@@ -98,7 +99,7 @@ function StatCard({ label, value, icon, color = "#D97736", sub }) {
         gap: 6,
         position: "relative",
         overflow: "hidden",
-        boxShadow: "rgba(0,0,0,0.25) 0px 25px 50px -12px",
+        boxShadow: "var(--shadow-card)",
         transition: "all 150ms ease",
       }}
     >
@@ -122,7 +123,7 @@ function StatCard({ label, value, icon, color = "#D97736", sub }) {
       <div
         style={{
           fontSize: 11,
-          color: "#6b7280",
+          color: "var(--text-secondary)",
           textTransform: "uppercase",
           letterSpacing: "0.06em",
           fontWeight: 600,
@@ -130,10 +131,10 @@ function StatCard({ label, value, icon, color = "#D97736", sub }) {
       >
         {label}
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, color: "#fff", lineHeight: 1 }}>
+      <div style={{ fontSize: 30, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
         {fmt(value)}
       </div>
-      {sub && <div style={{ fontSize: 12, color: "#6b7280" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{sub}</div>}
       <div
         style={{
           position: "absolute",
@@ -164,7 +165,7 @@ function SectionHead({ title, action }) {
         style={{
           fontSize: 14,
           fontWeight: 700,
-          color: "#fff",
+          color: "var(--text-primary)",
           margin: 0,
           letterSpacing: "-0.01em",
         }}
@@ -202,20 +203,20 @@ function ConfirmDialog({
     >
       <div
         style={{
-          background: "rgba(10,10,10,0.85)",
+          background: "var(--bg-surface)",
           backdropFilter: "blur(24px)",
-          border: "1px solid rgba(255,255,255,0.1)",
+          border: "1px solid var(--border-base)",
           borderRadius: 16,
           padding: 28,
           maxWidth: 400,
           width: "100%",
-          boxShadow: "rgba(0,0,0,0.4) 0px 25px 50px -12px",
+          boxShadow: "var(--shadow-elevated)",
         }}
       >
-        <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 10px", color: "#fff" }}>
+        <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 10px", color: "var(--text-primary)" }}>
           {title}
         </h3>
-        <p style={{ fontSize: 13, color: "#9CA3AF", margin: "0 0 24px", lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 24px", lineHeight: 1.5 }}>
           {body}
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
@@ -224,9 +225,9 @@ function ConfirmDialog({
             style={{
               padding: "8px 18px",
               borderRadius: 9999,
-              border: "1px solid rgba(255,255,255,0.1)",
+              border: "1px solid var(--border-base)",
               background: "transparent",
-              color: "#9CA3AF",
+              color: "var(--text-secondary)",
               cursor: "pointer",
               fontSize: 13,
               fontFamily: "inherit",
@@ -315,8 +316,8 @@ function NavBtn({ active, onClick, icon, label, badge }) {
         borderRadius: 16,
         border: "none",
         cursor: "pointer",
-        background: active ? "rgba(217,119,6,0.1)" : "transparent",
-        color: active ? "#D97736" : "#9CA3AF",
+        background: active ? "var(--accent-dim)" : "transparent",
+        color: active ? "var(--primary)" : "var(--text-secondary)",
         fontSize: 13,
         fontWeight: active ? 600 : 400,
         fontFamily: "inherit",
@@ -381,6 +382,7 @@ function AdminPage() {
   const [emailFilter, setEmailFilter] = useState("all");
   const [bulkAction, setBulkAction] = useState(null);
   const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   /* auth guard */
   useEffect(() => {
@@ -556,16 +558,7 @@ function AdminPage() {
   ];
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        background: "#0A0A0A",
-        color: "#fff",
-        fontFamily: "var(--font-sans)",
-      }}
-    >
+    <div className={styles.shell}>
       <style>{`
         @keyframes slideInRight {
           from { opacity:0; transform:translateX(20px); }
@@ -574,59 +567,14 @@ function AdminPage() {
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { width:6px; height:6px; }
         ::-webkit-scrollbar-track { background:transparent; }
-        ::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.1); border-radius:3px; }
+        ::-webkit-scrollbar-thumb { background:var(--border-base); border-radius:3px; }
         input, textarea, button, select { font-family:inherit; }
         a { color:inherit; text-decoration:none; }
-        .admin-card {
-          background: rgba(10,10,10,0.8);
-          backdrop-filter: blur(24px);
-          -webkit-backdrop-filter: blur(24px);
-          border: 1px solid rgba(255,255,255,0.08);
-          border-radius: 16px;
-          box-shadow: rgba(0,0,0,0.25) 0px 25px 50px -12px;
-          padding: 20px;
-          transition: all 150ms ease;
-        }
-        .admin-card:hover {
-          border-color: rgba(255,255,255,0.12);
-        }
-        .admin-input {
-          background: #111114;
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 16px;
-          padding: 10px 14px;
-          color: #fff;
-          font-size: 13px;
-          outline: none;
-          transition: border-color 150ms ease;
-        }
-        .admin-input:focus {
-          border-color: #D97736;
-        }
-        .admin-btn {
-          padding: 6px 12px;
-          border-radius: 6px;
-          border: none;
-          cursor: pointer;
-          font-size: 12px;
-          font-weight: 500;
-          transition: all 150ms ease;
-        }
       `}</style>
 
       {/* ── SIDEBAR ── */}
       <aside
-        style={{
-          width: 220,
-          minWidth: 220,
-          background: "rgba(10,10,10,0.9)",
-          backdropFilter: "blur(24px)",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
-          display: "flex",
-          flexDirection: "column",
-          padding: "16px 10px",
-          gap: 2,
-        }}
+        className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}
       >
         {/* brand */}
         <div
@@ -643,10 +591,10 @@ function AdminPage() {
               height: 30,
               borderRadius: 6,
               overflow: "hidden",
-              background: "#1a1a20",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+            background: "var(--bg-base)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
             }}
           >
             <img
@@ -656,8 +604,8 @@ function AdminPage() {
             />
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>SubAI Admin</div>
-            <div style={{ fontSize: 10, color: "#6b7280" }}>Control Panel</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>SubAI Admin</div>
+            <div style={{ fontSize: 10, color: "var(--text-secondary)" }}>Control Panel</div>
           </div>
         </div>
 
@@ -675,7 +623,7 @@ function AdminPage() {
 
         <div style={{ flex: 1 }} />
         <div
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: 10, marginTop: 4 }}
+          style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 10, marginTop: 4 }}
         >
           <NavBtn
             active={false}
@@ -690,50 +638,50 @@ function AdminPage() {
           style={{
             margin: "10px 4px 0",
             padding: "10px 12px",
-            background: "rgba(217,119,6,0.06)",
+            background: "var(--accent-dim)",
             borderRadius: 16,
-            border: "1px solid rgba(217,119,6,0.12)",
+            border: "1px solid var(--primary)",
             transition: "all 150ms ease",
           }}
         >
-          <div style={{ fontSize: 10, color: "#D97736", fontWeight: 700, marginBottom: 3 }}>
+          <div style={{ fontSize: 10, color: "var(--primary)", fontWeight: 700, marginBottom: 3 }}>
             ADMIN
           </div>
-          <div style={{ fontSize: 11, color: "#6b7280", wordBreak: "break-all" }}>{user.email}</div>
+          <div style={{ fontSize: 11, color: "var(--text-secondary)", wordBreak: "break-all" }}>{user.email}</div>
         </div>
       </aside>
 
+      {sidebarOpen && <div className={styles.mobileOverlay} onClick={() => setSidebarOpen(false)} />}
+
       {/* ── MAIN ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div className={styles.main}>
         {/* header */}
-        <div
-          style={{
-            height: 60,
-            padding: "0 28px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "#0A0A0A",
-            flexShrink: 0,
-          }}
-        >
-          <div>
-            <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "#fff" }}>
+        <div className={styles.header}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={styles.hamburger}
+              aria-label="Toggle sidebar"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 5h16" /><path d="M4 12h16" /><path d="M4 19h16" />
+              </svg>
+            </button>
+            <h1 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
               {sideItems.find((s) => s.id === tab)?.icon}{" "}
               {sideItems.find((s) => s.id === tab)?.label}
             </h1>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {loadingData && <span style={{ fontSize: 11, color: "#6b7280" }}>Loading…</span>}
+            {loadingData && <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Loading…</span>}
             <button
               onClick={loadAll}
               style={{
                 padding: "7px 14px",
                 borderRadius: 9999,
-                border: "1px solid rgba(255,255,255,0.1)",
+                border: "1px solid var(--border-base)",
                 background: "transparent",
-                color: "#9CA3AF",
+                color: "var(--text-secondary)",
                 cursor: "pointer",
                 fontSize: 12,
                 display: "flex",
@@ -765,19 +713,12 @@ function AdminPage() {
         )}
 
         {/* content */}
-        <div style={{ flex: 1, overflow: "auto", padding: "24px 28px" }}>
+        <div className={styles.scrollArea}>
           {/* ══ OVERVIEW ══ */}
           {tab === "overview" && (
             <div>
               {/* stat cards */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))",
-                  gap: 14,
-                  marginBottom: 28,
-                }}
-              >
+              <div className={styles.grid}>
                 <StatCard
                   label="Total Users"
                   value={stats?.totalUsers}
@@ -827,10 +768,7 @@ function AdminPage() {
               </div>
 
               {/* jobs over time */}
-              <div
-                className="admin-card"
-                style={{ marginBottom: 18 }}
-              >
+                <div className={styles.chartCard}>
                 <SectionHead title="Jobs Over Time" />
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={stats?.jobsByDate || []}>
@@ -873,16 +811,9 @@ function AdminPage() {
               </div>
 
               {/* pie row */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 14,
-                  marginBottom: 18,
-                }}
-              >
+              <div className={styles.chartGrid}>
                 <div
-                  className="admin-card"
+                  className={styles.card}
                 >
                   <SectionHead title="Language Split" />
                   <ResponsiveContainer width="100%" height={180}>
@@ -912,10 +843,7 @@ function AdminPage() {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div
-                  className="admin-card"
-                >
-                  <SectionHead title="Job Status" />
+                <div className={styles.chartCard}>
                   <ResponsiveContainer width="100%" height={180}>
                     <PieChart>
                       <Pie
@@ -947,7 +875,7 @@ function AdminPage() {
 
               {/* top users */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Top Users by Jobs" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1524,7 +1452,7 @@ function AdminPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               {/* users over time */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="User Signups Over Time" />
                 <ResponsiveContainer width="100%" height={200}>
@@ -1569,7 +1497,7 @@ function AdminPage() {
 
               {/* cumulative */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Cumulative Growth" />
                 <ResponsiveContainer width="100%" height={200}>
@@ -1618,7 +1546,7 @@ function AdminPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 {/* by weekday */}
                 <div
-                  className="admin-card"
+                  className={styles.card}
                 >
                   <SectionHead title="Jobs by Weekday" />
                   <ResponsiveContainer width="100%" height={160}>
@@ -1649,7 +1577,7 @@ function AdminPage() {
 
                 {/* by hour */}
                 <div
-                  className="admin-card"
+                  className={styles.card}
                 >
                   <SectionHead title="Jobs by Hour (UTC)" />
                   <ResponsiveContainer width="100%" height={160}>
@@ -1681,7 +1609,7 @@ function AdminPage() {
 
                 {/* duration buckets */}
                 <div
-                  className="admin-card"
+                  className={styles.card}
                 >
                   <SectionHead title="Video Duration Buckets" />
                   <ResponsiveContainer width="100%" height={160}>
@@ -1712,7 +1640,7 @@ function AdminPage() {
 
                 {/* engagement */}
                 <div
-                  className="admin-card"
+                  className={styles.card}
                 >
                   <SectionHead title="User Engagement" />
                   <ResponsiveContainer width="100%" height={160}>
@@ -1781,7 +1709,7 @@ function AdminPage() {
 
               {/* churned users */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead
                   title={`Churned Users (${churned.length}) — No activity in 30 days`}
@@ -1832,7 +1760,7 @@ function AdminPage() {
 
               {/* new signups */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title={`New Signups This Week (${newSignups.length})`} />
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1881,7 +1809,7 @@ function AdminPage() {
 
               {/* top language */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Language Popularity Ranking" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1968,7 +1896,7 @@ function AdminPage() {
                 />
               </div>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Revenue Breakdown" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -2187,7 +2115,7 @@ function AdminPage() {
                 ))}
               </div>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Email Statistics" />
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
@@ -2228,7 +2156,7 @@ function AdminPage() {
                 </div>
               </div>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Email Service Status" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2262,7 +2190,7 @@ function AdminPage() {
           {tab === "flags" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead
                   title="Feature Flags"
@@ -2331,7 +2259,7 @@ function AdminPage() {
           {tab === "audit" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead
                   title="Audit Log"
@@ -2396,7 +2324,7 @@ function AdminPage() {
           {tab === "bulk" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Bulk Operations" />
                 <div
@@ -2590,7 +2518,7 @@ function AdminPage() {
           {tab === "moderation" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Currently Banned Users" />
                 {users?.filter((u) => u.banned).length === 0 ? (
@@ -2659,7 +2587,7 @@ function AdminPage() {
 
               {/* jobs with AI description */}
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Jobs with AI Descriptions" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -2709,7 +2637,7 @@ function AdminPage() {
           {tab === "broadcast" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div
-                className="admin-card"
+                className={styles.card}
                 style={{ padding: 24 }}
               >
                 <SectionHead title="Send Announcement" />
@@ -2757,7 +2685,7 @@ function AdminPage() {
 
               {announcements.length > 0 && (
                 <div
-                  className="admin-card"
+                  className={styles.card}
                 >
                   <SectionHead title="Announcement History" />
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2822,7 +2750,7 @@ function AdminPage() {
               </div>
 
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Admin Info" />
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -2857,7 +2785,7 @@ function AdminPage() {
               </div>
 
               <div
-                className="admin-card"
+                className={styles.card}
               >
                 <SectionHead title="Quick Actions" />
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
