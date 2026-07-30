@@ -27,7 +27,7 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/subai-logo.png" },
+      { rel: "icon", type: "image/png", href: "/subai-logo.png", sizes: "600x600" },
       { rel: "shortcut icon", type: "image/png", href: "/subai-logo.png" },
     ],
   }),
