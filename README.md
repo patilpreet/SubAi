@@ -268,7 +268,7 @@ To accelerate development and improve productivity, AI-assisted development tool
 
 # 🖥 Live Application Preview
 
-![SubAI Screenshot](https://api.pikwy.com/web/6a4f0020b35b33268525f0b9.jpg)
+![SubAI Screenshot](https://iad.microlink.io/vs_wHli9CmsC5bjkdoas2kRNsoLmOMYNjgkyd2aUeb6BjTOlG24b2sYHqX5djTrLdwNxBeIC-uSKxcUc1Slfqw.png)
 
 ---
 
