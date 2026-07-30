@@ -22,7 +22,7 @@ export function Layout({ children, hideNav, hideFooter }) {
             <div className="mx-auto max-w-4xl px-4 pt-5">
               <div className="flex items-center justify-between rounded-full border border-[var(--border-base)] bg-[var(--bg-surface)]/70 backdrop-blur-xl px-5 py-2.5 shadow-sm transition-all duration-300">
                 <Link className="flex items-center gap-2 shrink-0" to="/">
-                  <img src="/subai-logo.png" alt="SubAI" className="h-10 w-auto object-contain brightness-95 contrast-125" />
+                  <img src="/favicon.png" alt="SubAI" className="h-8 w-auto object-contain" />
                 </Link>
 
                 <nav className="hidden md:flex items-center gap-1">
@@ -139,7 +139,7 @@ export function Layout({ children, hideNav, hideFooter }) {
           <div className="max-w-5xl mx-auto px-6 grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
             <div className="col-span-1 md:col-span-2">
               <Link to="/" className="flex items-center gap-2 mb-4">
-                <img src="/subai-logo.png" alt="SubAI" className="h-10 w-auto object-contain brightness-95 contrast-125" />
+                <img src="/favicon.png" alt="SubAI" className="h-8 w-auto object-contain" />
               </Link>
               <p className="text-[var(--text-secondary)] text-sm max-w-xs leading-relaxed">
                 The free, browser-native AI caption studio built for Indian creators.

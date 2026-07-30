@@ -83,9 +83,9 @@ function PricingPage() {
 
   const computePrice = (price, period) => {
     if (period !== "/mo") return { display: price, suffix: period };
-    if (!yearly) return { display: `\u20B9${price}`, suffix: "/mo" };
+    if (!yearly) return { display: `₹${price}`, suffix: "/mo" };
     const yearlyPrice = Math.round(price * 10 * 0.88);
-    return { display: `\u20B9${yearlyPrice}`, suffix: "/yr" };
+    return { display: `₹${yearlyPrice}`, suffix: "/yr" };
   };
 
   return (
@@ -108,21 +108,21 @@ function PricingPage() {
 
       <section className="px-6 pb-16">
         <div className="max-w-6xl mx-auto">
-          <div className="rounded-2xl border border-[var(--primary)]/20 bg-gradient-to-br from-[var(--primary)]/5 to-transparent p-8 text-center max-w-lg mx-auto">
+          <div className="rounded-2xl border border-[var(--primary)]/20 bg-[var(--bg-surface)] p-8 text-center max-w-lg mx-auto">
             <span className="inline-block px-3 py-1 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[var(--primary)] text-[11px] font-bold uppercase tracking-wider mb-4">
               First export offer
             </span>
-            <div className="text-5xl font-black text-white mb-2">\u20B99</div>
+            <div className="text-5xl font-black text-[var(--text-primary)] mb-2">₹9</div>
             <p className="text-[var(--text-secondary)] text-sm mb-1">first export</p>
             <p className="text-[var(--text-secondary)] text-xs mb-6">
-              Your first watermark-free HD export. One per user - then \u20B959 for a week of
+              Your first watermark-free HD export. One per user - then ₹59 for a week of
               unlimited clean exports - UPI - 10 seconds.
             </p>
             <Link
               to="/checkout"
-              className="inline-flex items-center gap-2 px-6 py-3 text-[14px] font-bold text-[var(--text-primary)] bg-[var(--primary)] hover:bg-[var(--tertiary)] rounded-full transition-all duration-150"
+              className="inline-flex items-center gap-2 px-6 py-3 text-[14px] font-bold text-white bg-[var(--primary)] hover:bg-[var(--tertiary)] rounded-full transition-all duration-150"
             >
-              Claim your \u20B99 export
+              Claim your ₹9 export
             </Link>
           </div>
         </div>
@@ -130,11 +130,11 @@ function PricingPage() {
 
       <section className="px-6 pb-20">
         <div className="max-w-6xl mx-auto">
-          <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--bg-base)]/80 backdrop-blur-2xl p-6 md:p-8 text-center max-w-lg mx-auto">
+          <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--bg-surface)] p-6 md:p-8 text-center max-w-lg mx-auto">
             <span className="text-[var(--text-secondary)] text-xs uppercase tracking-wider font-bold">
               Not ready for monthly?
             </span>
-            <div className="text-4xl font-black text-white mt-3">\u20B959</div>
+            <div className="text-4xl font-black text-[var(--text-primary)] mt-3">₹59</div>
             <p className="text-[var(--text-secondary)] font-medium">/ 7 days</p>
             <p className="text-[var(--text-secondary)] text-xs mt-1 mb-6">
               Week Pass — 7 days of Starter. One-time UPI - no mandate - no auto-renew.
@@ -146,26 +146,26 @@ function PricingPage() {
                 "1080p HD export",
                 "All styles & fonts",
               ].map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-[var(--text-tertiary)]">
-                  <svg
-                    className="w-4 h-4 text-[var(--primary)] mt-0.5 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M5 13l4 4L19 7" />
-                  </svg>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              to="/checkout"
-              className="inline-flex items-center gap-2 px-6 py-3 text-[14px] font-semibold text-white rounded-full border border-[var(--primary)] hover:bg-[var(--primary)]/10 transition-all duration-150"
-            >
-              Get the \u20B959 Week Pass
-            </Link>
+                  <li key={f} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
+                    <svg
+                      className="w-4 h-4 text-[var(--primary)] mt-0.5 shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                to="/checkout"
+                className="inline-flex items-center gap-2 px-6 py-3 text-[14px] font-semibold text-[var(--text-primary)] rounded-full border border-[var(--primary)] hover:bg-[var(--primary)]/10 transition-all duration-150"
+              >
+                Get the ₹59 Week Pass
+              </Link>
           </div>
         </div>
       </section>
@@ -174,7 +174,7 @@ function PricingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-center gap-4 mb-10">
             <span
-              className={`text-sm font-medium cursor-pointer ${!yearly ? "text-white" : "text-[var(--text-secondary)]"}`}
+              className={`text-sm font-medium cursor-pointer ${!yearly ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
               onClick={() => setYearly(false)}
             >
               Monthly
@@ -191,7 +191,7 @@ function PricingPage() {
             </button>
             <div className="flex items-center gap-2">
               <span
-                className={`text-sm font-medium cursor-pointer ${yearly ? "text-white" : "text-[var(--text-secondary)]"}`}
+                className={`text-sm font-medium cursor-pointer ${yearly ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}
                 onClick={() => setYearly(true)}
               >
                 Yearly
@@ -207,9 +207,9 @@ function PricingPage() {
                 <div
                   key={plan.name}
                   className={`relative rounded-2xl border p-6 flex flex-col ${plan.highlight
-                      ? "border-[var(--primary)]/30 bg-gradient-to-b from-[var(--primary)]/5 to-[#0A0A0A]/80 shadow-lg shadow-[var(--primary)]/5"
-                      : "border-[var(--border-base)] bg-[var(--bg-base)]/80"
-                    } backdrop-blur-2xl`}
+                      ? "border-[var(--primary)]/30 bg-[var(--bg-surface)] shadow-lg shadow-[var(--primary)]/5"
+                      : "border-[var(--border-base)] bg-[var(--bg-surface)]"
+                    }`}
                 >
                   {plan.badge && (
                     <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[var(--primary)] text-[var(--text-primary)] text-[10px] font-bold uppercase tracking-wider">
@@ -218,8 +218,8 @@ function PricingPage() {
                   )}
 
                   <div className="mb-6">
-                    <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
-                    <div className="text-3xl font-black text-white">
+                    <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">{plan.name}</h3>
+                    <div className="text-3xl font-black text-[var(--text-primary)]">
                       {display}
                       <span className="text-sm font-medium text-[var(--text-secondary)]">{suffix}</span>
                     </div>
@@ -227,7 +227,7 @@ function PricingPage() {
 
                   <ul className="space-y-2.5 mb-8 flex-1">
                     {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-2 text-sm text-[var(--text-tertiary)]">
+                      <li key={f} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
                         <svg
                           className="w-4 h-4 text-[var(--primary)] mt-0.5 shrink-0"
                           fill="none"
@@ -246,7 +246,7 @@ function PricingPage() {
                     to={plan.href}
                     className={`w-full text-center py-2.5 rounded-full text-[13px] font-bold transition-all duration-150 ${plan.highlight
                         ? "bg-[var(--primary)] text-[var(--text-primary)] hover:bg-[var(--tertiary)]"
-                        : "bg-white/[0.06] text-white hover:bg-white/[0.1] border border-[var(--border-base)]"
+                        : "bg-[var(--bg-surface)] text-[var(--text-primary)] hover:bg-[var(--bg-raised)] border border-[var(--border-base)]"
                       }`}
                   >
                     {plan.cta}
@@ -264,7 +264,7 @@ function PricingPage() {
             <p className="section-label">
               Plugin Included
             </p>
-            <h2 className="text-3xl md:text-[2.8rem] font-black tracking-tight leading-[1.06] text-white">
+            <h2 className="text-3xl md:text-[2.8rem] font-black tracking-tight leading-[1.06] text-[var(--text-primary)]">
               Premiere Pro, After Effects & DaVinci Resolve plugin
             </h2>
             <p className="text-[var(--text-secondary)] mt-3 text-sm">watermark-free on Starter, Editor & Pro</p>
@@ -293,7 +293,7 @@ function PricingPage() {
                     {row.map((cell, j) => (
                       <td
                         key={j}
-                        className={`py-3 ${j === 0 ? "text-left text-[var(--text-tertiary)] pr-4" : "text-center px-4 " + (j === 3 ? "text-[var(--primary)]" : "text-[var(--text-secondary)]")}`}
+                        className={`py-3 ${j === 0 ? "text-left text-[var(--text-secondary)] pr-4" : "text-center px-4 " + (j === 3 ? "text-[var(--primary)]" : "text-[var(--text-secondary)]")}`}
                       >
                         {cell}
                       </td>
@@ -311,7 +311,7 @@ function PricingPage() {
           <div className="text-center mt-8">
             <Link
               to="/plugin/download"
-              className="inline-flex items-center gap-2 px-6 py-3 text-[14px] font-semibold text-white rounded-full border border-[var(--primary)] hover:bg-[var(--primary)]/10 transition-all duration-150"
+              className="inline-flex items-center gap-2 px-6 py-3 text-[14px] font-semibold text-[var(--text-primary)] rounded-full border border-[var(--primary)] hover:bg-[var(--primary)]/10 transition-all duration-150"
             >
               Download the plugin
             </Link>
