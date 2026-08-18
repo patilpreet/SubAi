@@ -1,5 +1,4 @@
-import { useEffect, useRef } from "react";
-import * as THREE from "three";
+import { useEffect, useRef, useState } from "react";
 
 const VERTEX_SHADER = `
   attribute float aSize;
@@ -55,18 +54,28 @@ const FRAGMENT_SHADER = `
 const GRID_SIZE = 80;
 const TOTAL_PARTICLES = GRID_SIZE * GRID_SIZE;
 
-const prefersReducedMotion =
-  typeof window !== "undefined" &&
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
 export function WebGLBackground() {
   const containerRef = useRef(null);
   const mouseRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
+  const cleanupRef = useRef(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => { setIsClient(true); }, []);
 
   useEffect(() => {
+    if (!isClient) return;
+    if (typeof window === "undefined") return;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) return;
     const container = containerRef.current;
     if (!container) return;
+
+    let THREE;
+    let cancelled = false;
+
+    import("three").then((mod) => {
+      if (cancelled) return;
+      THREE = mod;
 
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -166,7 +175,7 @@ export function WebGLBackground() {
 
     animate();
 
-    return () => {
+    cleanupRef.current = () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("mousemove", handleMouse);
       window.removeEventListener("resize", handleResize);
@@ -177,21 +186,16 @@ export function WebGLBackground() {
         container.removeChild(renderer.domElement);
       }
     };
-  }, []);
+    }); // end of import("three").then(...)
 
-  if (prefersReducedMotion) {
-    return (
-      <div
-        aria-hidden="true"
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 0,
-          pointerEvents: "none",
-          background: "radial-gradient(ellipse at center, rgba(217,119,6,0.06) 0%, transparent 70%)",
-        }}
-      />
-    );
+    return () => {
+      cancelled = true;
+      if (cleanupRef.current) cleanupRef.current();
+    };
+  }, [isClient]);
+
+  if (!isClient) {
+    return null;
   }
 
   return (
