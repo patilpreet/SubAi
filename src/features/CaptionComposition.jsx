@@ -1,14 +1,31 @@
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, Video } from "remotion";
+import { useMemo } from "react";
 
 // A Remotion composition that renders the real uploaded video + word-by-word highlighted
-// subtitles in strict sequential word order with in-place kinetic typography styling.
+// subtitles in strict sequential word order with clean, isolated phrase resets.
 export function CaptionComposition({ subtitles = [], preset, background = "#09090b", videoUrl }) {
   const frame = useCurrentFrame();
   const { fps, width: compW, height: compH } = useVideoConfig();
   const t = frame / fps;
 
-  const active = subtitles.find((s) => t >= s.start && t < s.end);
-  const words = active ? active.text.trim().split(/\s+/).filter(Boolean) : [];
+  // Strict chronological sorting to prevent out-of-order segment jumps
+  const sortedSubs = useMemo(() => {
+    return [...subtitles]
+      .filter((s) => s && typeof s.start === "number" && typeof s.end === "number" && s.end > s.start)
+      .sort((a, b) => a.start - b.start);
+  }, [subtitles]);
+
+  // Find the exact active subtitle segment for current playback timestamp
+  const active = useMemo(() => {
+    return sortedSubs.find((s) => t >= s.start && t < s.end) || null;
+  }, [sortedSubs, t]);
+
+  const activeSegmentKey = active ? (active.id || `seg_${active.start.toFixed(2)}_${active.end.toFixed(2)}`) : "empty";
+  const words = useMemo(() => {
+    if (!active || !active.text) return [];
+    return active.text.trim().split(/\s+/).filter(Boolean);
+  }, [active?.text]);
+
   const activeDur = active ? Math.max(0.05, active.end - active.start) : 1;
   const progress = active ? Math.max(0, Math.min(1, (t - active.start) / activeDur)) : 0;
   const activeWordIdx = Math.min(words.length - 1, Math.floor(progress * words.length));
@@ -107,6 +124,7 @@ export function CaptionComposition({ subtitles = [], preset, background = "#0909
 
       {active && words.length > 0 && (
         <div
+          key={activeSegmentKey}
           style={{
             position: "relative",
             zIndex: 10,
@@ -135,6 +153,7 @@ export function CaptionComposition({ subtitles = [], preset, background = "#0909
           >
             {words.map((w, i) => {
               const isActive = i === activeWordIdx;
+              const wordKey = `${activeSegmentKey}_w${i}_${w}`;
 
               let wordFont = p.font || "inherit";
               let wordWeight = p.weight || 700;
@@ -152,8 +171,6 @@ export function CaptionComposition({ subtitles = [], preset, background = "#0909
               let wordBoxShadow = undefined;
 
               // 1. Forget Status (Editorial Duo):
-              // Inactive words: Italic serif white font
-              // Active word IN PLACE: Bold uppercase Plus Jakarta Sans in glowing Cyan #38bdf8
               if (isEditorialForget) {
                 if (isActive) {
                   wordFont = "'Plus Jakarta Sans', 'Montserrat', sans-serif";
@@ -174,8 +191,6 @@ export function CaptionComposition({ subtitles = [], preset, background = "#0909
                 }
               }
               // 2. Focus Deeply (Swiss Duo):
-              // Inactive: Italic serif white font
-              // Active IN PLACE: Bold uppercase Plus Jakarta Sans in glowing Yellow #facc15
               else if (isEditorialFocus) {
                 if (isActive) {
                   wordFont = "'Plus Jakarta Sans', 'Montserrat', sans-serif";
@@ -284,7 +299,7 @@ export function CaptionComposition({ subtitles = [], preset, background = "#0909
 
               return (
                 <span
-                  key={i}
+                  key={wordKey}
                   style={{
                     fontFamily: wordFont,
                     fontWeight: wordWeight,
@@ -297,7 +312,6 @@ export function CaptionComposition({ subtitles = [], preset, background = "#0909
                     border: wordBorder,
                     boxShadow: wordBoxShadow,
                     transform,
-                    transition: "transform 0.12s cubic-bezier(0.16, 1, 0.3, 1), color 0.12s ease, background 0.12s ease",
                     textShadow: wordShadow,
                     letterSpacing: p.letterSpacing || "0.01em",
                     textTransform: wordTransform,

@@ -995,7 +995,7 @@ function EditorPage() {
                 durationInFrames={Math.max(60, Math.ceil(totalDuration * 30))}
                 controls={false}
                 autoPlay={false}
-                loop
+                loop={false}
                 playbackRate={playbackRate}
               />
             </div>
