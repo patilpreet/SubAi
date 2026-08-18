@@ -10,6 +10,7 @@ import { getVideoUrl, loadSubtitles } from "../lib/jobsService";
 import { supabase } from "../lib/supabase";
 import { generateHook } from "../lib/hooksServer";
 import { convertSubtitles } from "../lib/scriptConverter";
+import { exportVideo, triggerDownload } from "../lib/videoExporter";
 import {
   ArrowLeft,
   Undo2,
@@ -596,122 +597,32 @@ function EditorPage() {
   };
 
   const handleExport = async () => {
+    if (!videoUrl) {
+      push("No video source available for export.");
+      return;
+    }
     setExporting(true);
-    let cancelled = false;
-    push("Preparing export...");
     try {
-      let videoEl = document.querySelector("video");
-      if (!videoEl && videoUrl) {
-        videoEl = document.createElement("video");
-        videoEl.src = videoUrl;
-        videoEl.crossOrigin = "anonymous";
-        await Promise.race([
-          new Promise((r) => {
-            videoEl.onloadeddata = r;
-          }),
-          new Promise((_, rej) => setTimeout(() => rej(new Error("Video load timeout")), 10000)),
-        ]);
-        if (cancelled) return;
-      }
-      if (!videoEl) throw new Error("No video available.");
-      videoEl.currentTime = 0;
-      await Promise.race([
-        new Promise((r) => {
-          videoEl.onseeked = r;
-        }),
-        new Promise((_, rej) => setTimeout(() => rej(new Error("Seek timeout")), 3000)),
-      ]);
-      if (cancelled) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = videoEl.videoWidth || 1080;
-      canvas.height = videoEl.videoHeight || 1920;
-      const ctx = canvas.getContext("2d");
-      const canvasStream = canvas.captureStream(30);
-
-      let audioCtx = null;
-      let audioDest = null;
-      try {
-        if (!videoEl._sarvamAudioAttached) {
-          audioCtx = new AudioContext();
-          const source = audioCtx.createMediaElementSource(videoEl);
-          audioDest = audioCtx.createMediaStreamDestination();
-          source.connect(audioDest);
-          source.connect(audioCtx.destination);
-          videoEl._sarvamAudioCtx = audioCtx;
-          videoEl._sarvamAudioDest = audioDest;
-          videoEl._sarvamAudioAttached = true;
-        } else {
-          audioCtx = videoEl._sarvamAudioCtx;
-          audioDest = videoEl._sarvamAudioDest;
-        }
-      } catch (_) {}
-
-      const combinedStream = new MediaStream([
-        ...canvasStream.getVideoTracks(),
-        ...(audioDest ? audioDest.stream.getAudioTracks() : []),
-      ]);
-
-      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
-        ? "video/webm;codecs=vp9,opus"
-        : MediaRecorder.isTypeSupported("video/webm;codecs=vp8,opus")
-          ? "video/webm;codecs=vp8,opus"
-          : "video/webm";
-      const recorder = new MediaRecorder(combinedStream, {
-        mimeType,
-        videoBitsPerSecond: 5000000,
+      const result = await exportVideo({
+        videoUrl,
+        subtitles: useEditorStore.getState().subtitles,
+        preset,
+        isFreeTier: false,
+        aspect,
+        filename: job?.title || "subai-captioned",
+        onProgress: (p) => {
+          if (p.stage) {
+            toast(p.stage, { id: "export-progress", duration: 3000 });
+          }
+        },
       });
-      const chunks = [];
-      recorder.ondataavailable = (e) => chunks.push(e.data);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${job?.title || "captioned"}-captioned.webm`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        setExporting(false);
-        push("Export complete!");
-      };
-      videoEl.currentTime = 0;
-      await new Promise((r) => setTimeout(r, 200));
-      recorder.start();
-      videoEl.play().catch(() => {});
-      const fontSize = Math.round(canvas.height * 0.04);
-      const drawFrame = () => {
-        if (cancelled) {
-          recorder.stop();
-          return;
-        }
-        if (videoEl.paused || videoEl.ended) {
-          recorder.stop();
-          return;
-        }
-        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-        const currentSubs = useEditorStore.getState().subtitles;
-        const activeSub = currentSubs.find(
-          (s) => videoEl.currentTime >= s.start && videoEl.currentTime <= s.end,
-        );
-        if (activeSub) {
-          ctx.font = `bold ${fontSize}px Inter, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.fillStyle = preset?.color || "white";
-          ctx.strokeStyle = "rgba(0,0,0,0.8)";
-          ctx.lineWidth = Math.round(fontSize * 0.12);
-          ctx.strokeText(activeSub.text, canvas.width / 2, canvas.height * 0.8);
-          ctx.fillText(activeSub.text, canvas.width / 2, canvas.height * 0.8);
-        }
-        if (IS_FREE_TIER) {
-          drawWatermark(ctx, canvas);
-        }
-        requestAnimationFrame(drawFrame);
-      };
-      drawFrame();
-    } catch (e) {
+      triggerDownload(result.url, result.filename);
+      toast.success("Export completed! Video ready to play.", { id: "export-progress" });
+    } catch (err) {
+      console.error("Export error:", err);
+      toast.error(`Export failed: ${err.message}`, { id: "export-progress" });
+    } finally {
       setExporting(false);
-      push("Export failed: " + e.message);
     }
   };
 
@@ -725,7 +636,8 @@ function EditorPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${job.title || "subtitles"}.srt`;
+    const cleanTitle = (job?.title || "subtitles").replace(/[^a-zA-Z0-9_-]/g, "_");
+    a.download = `${cleanTitle}.srt`;
     a.click();
     URL.revokeObjectURL(url);
     push("SRT downloaded!");
