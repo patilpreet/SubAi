@@ -41,11 +41,11 @@ function AboutPage() {
               </div>
 
               <div>
-                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-3">Why free?</h2>
+                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-3">100% Free & Accessible</h2>
                 <p className="text-[var(--text-secondary)] leading-relaxed">
-                  We believe great tools should be accessible. The free tier gives you everything —
-                  all styles, all formats — with a watermark on exports. When you're ready to go
-                  pro, you pay in INR for what you need, nothing more.
+                  We believe powerful creator tools should be open to everyone. SubAI provides complete,
+                  unrestricted access to all AI transcription models, kinetic typography presets, and multi-track
+                  NLE editing tools directly in your browser with zero paywalls.
                 </p>
               </div>
 

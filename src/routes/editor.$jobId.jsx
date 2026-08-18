@@ -83,23 +83,26 @@ const overlayBase = {
   position: "fixed",
   inset: 0,
   zIndex: 300,
-  background: "rgba(0,0,0,0.15)",
-  backdropFilter: "blur(8px)",
+  background: "rgba(0, 0, 0, 0.75)",
+  backdropFilter: "blur(12px)",
+  WebkitBackdropFilter: "blur(12px)",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
+  padding: 20,
 };
 
 const modalBase = {
-  background: "var(--bg-surface)",
-  border: "1px solid var(--border-base)",
+  background: "var(--bg-surface, #18181B)",
+  border: "1px solid var(--border-base, rgba(255, 255, 255, 0.08))",
   borderRadius: 20,
   padding: 24,
-  maxWidth: 600,
-  width: "90%",
+  maxWidth: 520,
+  width: "100%",
   maxHeight: "85vh",
   overflow: "auto",
-  boxShadow: "var(--shadow-deep)",
+  boxShadow: "0 25px 60px rgba(0, 0, 0, 0.6)",
+  color: "var(--text-primary, #F5F5F0)",
 };
 
 function Tooltip({ text, children }) {
@@ -249,7 +252,9 @@ function EditorPage() {
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [resolution, setResolution] = useState("1080p");
-  const [aspect, setAspect] = useState("original");
+  const [aspect, setAspect] = useState("916");
+  const [previewZoom, setPreviewZoom] = useState(100);
+  const [videoNaturalSize, setVideoNaturalSize] = useState({ width: 1080, height: 1920 });
   const [panelTab, setPanelTab] = useState("templates");
   const [subTab, setSubTab] = useState("builtin");
   const [lineMode, setLineMode] = useState("1");
@@ -280,6 +285,7 @@ function EditorPage() {
   const updateSegment = useEditorStore((s) => s.updateSegment);
   const splitSegment = useEditorStore((s) => s.splitSegment);
   const deleteSegment = useEditorStore((s) => s.deleteSegment);
+  const addSegment = useEditorStore((s) => s.addSegment);
   const zoom = useEditorStore((s) => s.zoom);
   const setZoom = useEditorStore((s) => s.setZoom);
   const undo = useEditorStore((s) => s.undo);
@@ -296,31 +302,126 @@ function EditorPage() {
     toast(msg, { duration: 4000 });
   }, []);
 
+  // High-performance 60fps frame tracking loop while playing
+  useEffect(() => {
+    let animId = null;
+    if (playing) {
+      const checkFrame = () => {
+        const player = playerRef.current;
+        if (player) {
+          try {
+            const frame = player.getCurrentFrame();
+            if (typeof frame === "number" && !isNaN(frame)) {
+              setCurrentTime(frame / 30);
+            }
+          } catch {}
+        }
+        animId = requestAnimationFrame(checkFrame);
+      };
+      animId = requestAnimationFrame(checkFrame);
+    }
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [playing]);
+
+  // Listen to Remotion player native events once
   useEffect(() => {
     const player = playerRef.current;
     if (!player) return;
+
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
-    const onFrame = (e) => setCurrentTime(e.detail.frame / 30);
+    const onEnded = () => {
+      setPlaying(false);
+      setCurrentTime(0);
+    };
+    const onSeeked = (e) => {
+      if (e?.detail?.frame != null) {
+        setCurrentTime(e.detail.frame / 30);
+      }
+    };
+
     player.addEventListener("play", onPlay);
     player.addEventListener("pause", onPause);
-    player.addEventListener("frameupdate", onFrame);
+    player.addEventListener("ended", onEnded);
+    player.addEventListener("seeked", onSeeked);
+
     return () => {
       player.removeEventListener("play", onPlay);
       player.removeEventListener("pause", onPause);
-      player.removeEventListener("frameupdate", onFrame);
+      player.removeEventListener("ended", onEnded);
+      player.removeEventListener("seeked", onSeeked);
     };
-  }, []);
+  }, [playerRef.current]);
 
-  useEffect(() => {
+  // Sync play/pause state with player safely
+  const togglePlay = useCallback(() => {
     const player = playerRef.current;
     if (!player) return;
-    if (playing) {
-      player.play().catch(() => {});
-    } else {
+    if (player.isPlaying()) {
       player.pause();
+      setPlaying(false);
+    } else {
+      player.play().catch(() => {});
+      setPlaying(true);
     }
-  }, [playing]);
+  }, []);
+
+  // Read video natural dimensions
+  useEffect(() => {
+    if (!videoUrl) return;
+    const v = document.createElement("video");
+    v.src = videoUrl;
+    v.onloadedmetadata = () => {
+      if (v.videoWidth && v.videoHeight) {
+        setVideoNaturalSize({ width: v.videoWidth, height: v.videoHeight });
+      }
+    };
+  }, [videoUrl]);
+
+  const previewDimensions = useMemo(() => {
+    let ratio = "9 / 16";
+    let compW = 1080;
+    let compH = 1920;
+    let isLandscape = false;
+
+    if (aspect === "169") {
+      ratio = "16 / 9";
+      compW = 1920;
+      compH = 1080;
+      isLandscape = true;
+    } else if (aspect === "11") {
+      ratio = "1 / 1";
+      compW = 1080;
+      compH = 1080;
+      isLandscape = false;
+    } else if (aspect === "45") {
+      ratio = "4 / 5";
+      compW = 1080;
+      compH = 1350;
+      isLandscape = false;
+    } else if (aspect === "original") {
+      if (videoNaturalSize.width && videoNaturalSize.height) {
+        compW = videoNaturalSize.width;
+        compH = videoNaturalSize.height;
+        ratio = `${compW} / ${compH}`;
+        isLandscape = compW > compH;
+      } else {
+        ratio = "9 / 16";
+        compW = 1080;
+        compH = 1920;
+        isLandscape = false;
+      }
+    } else {
+      ratio = "9 / 16";
+      compW = 1080;
+      compH = 1920;
+      isLandscape = false;
+    }
+
+    return { ratio, compW, compH, isLandscape };
+  }, [aspect, videoNaturalSize]);
 
   const totalDuration = useMemo(() => {
     if (!subtitles.length) return 12;
@@ -384,20 +485,20 @@ function EditorPage() {
       }
       if (e.key === " " && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        const p = playerRef.current;
-        if (p) {
-          if (p.isPlaying()) { p.pause(); } else { p.play(); }
-        }
+        togglePlay();
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedSegId, currentTime, handleSplitSegment, handleDeleteSegment, handleTimelineSeek, totalDuration, setLeftPanelOpen, setRightPanelOpen]);
+  }, [selectedSegId, currentTime, handleSplitSegment, handleDeleteSegment, handleTimelineSeek, totalDuration, togglePlay, setLeftPanelOpen, setRightPanelOpen]);
 
   useEffect(() => {
     async function loadJobData() {
       setLoading(true);
       try {
+        const cachedUrl = sessionStorage.getItem(`video_${jobId}`) || localStorage.getItem(`video_${jobId}`);
+        if (cachedUrl) setVideoUrl(cachedUrl);
+
         const { data } = await supabase.from("jobs").select("*").eq("id", jobId).single();
         if (data) {
           setJob(data);
@@ -748,7 +849,7 @@ function EditorPage() {
   }
 
   return (
-    <div className={styles.shell}>
+    <div className={styles.shell} data-theme="dark">
       <header className={styles.topbar}>
         <div className={styles.topLeft}>
           <button className={styles.backBtn} onClick={() => navigate({ to: "/dashboard" })}>
@@ -797,37 +898,42 @@ function EditorPage() {
           <button
             className={styles.iconBtn}
             onClick={() => setHookModal(true)}
-            style={{ display: "flex", alignItems: "center", gap: 6 }}
+            title="Generate Viral Hook with AI"
           >
-            <Wand2 size={13} />
-            AI Hook
+            <Wand2 size={13} style={{ color: "var(--primary, #D97736)" }} />
+            <span>AI Hook</span>
           </button>
 
-          <div style={{ display: "flex", gap: 2 }}>
+          <div className={styles.scriptToggleGroup}>
             <button
               onClick={() => handleScriptChange("roman")}
-              className={`${styles.iconBtn} ${scriptMode === "roman" ? "bg-[var(--accent-dim)] border-[var(--primary)] text-[var(--primary)]" : ""}`}
+              className={`${styles.scriptToggleBtn} ${scriptMode === "roman" ? styles.scriptToggleBtnActive : ""}`}
             >
               Romanized
             </button>
             <button
               onClick={() => handleScriptChange("native")}
-              className={`${styles.iconBtn} ${scriptMode === "native" ? "bg-[var(--accent-dim)] border-[var(--primary)] text-[var(--primary)]" : ""}`}
+              className={`${styles.scriptToggleBtn} ${scriptMode === "native" ? styles.scriptToggleBtnActive : ""}`}
             >
               Native Script
             </button>
           </div>
 
-          <button className={styles.srtBtn} onClick={handleSRTExport}>
-            <FileText size={13} style={{ marginRight: 4 }} />
-            SRT
+          <button className={styles.srtBtn} onClick={handleSRTExport} title="Download SRT Subtitle file">
+            <FileText size={13} />
+            <span>SRT</span>
           </button>
-          <button className={styles.srtBtn} onClick={handleSEOExport}>
-            <Search size={13} style={{ marginRight: 4 }} />
-            SEO Text
+          <button className={styles.srtBtn} onClick={handleSEOExport} title="Download SEO Description">
+            <FileText size={13} />
+            <span>SEO Text</span>
           </button>
 
-          <button className={styles.exportBtn} onClick={handleExport} disabled={exporting}>
+          <button
+            className={styles.exportBtn}
+            onClick={handleExport}
+            disabled={exporting}
+            title="Export final captioned video"
+          >
             {exporting ? (
               <>
                 <Loader2 size={13} className="animate-spin mr-1" />
@@ -905,40 +1011,66 @@ function EditorPage() {
         <div className={styles.centerPanel}>
           <div className={styles.previewTopBar}>
             <div className={styles.aspectBtns}>
-              {["Original", "9:16", "16:9", "1:1", "4:5"].map((a) => {
-                const key = a === "Original" ? "original" : a.toLowerCase().replace(":", "");
-                return (
-                  <button
-                    key={a}
-                    className={`${styles.aspectBtn} ${aspect === key ? styles.aspectBtnActive : ""}`}
-                    onClick={() => setAspect(key)}
-                  >
-                    {a}
-                  </button>
-                );
-              })}
+              {[
+                { label: "Original", key: "original" },
+                { label: "9:16", key: "916" },
+                { label: "16:9", key: "169" },
+                { label: "1:1", key: "11" },
+                { label: "4:5", key: "45" },
+              ].map(({ label, key }) => (
+                <button
+                  key={key}
+                  className={`${styles.aspectBtn} ${aspect === key ? styles.aspectBtnActive : ""}`}
+                  onClick={() => setAspect(key)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
             <div className={styles.zoomControls}>
-              <ZoomOut size={12} />
-              <span>100%</span>
-              <ZoomIn size={12} />
+              <button
+                type="button"
+                onClick={() => setPreviewZoom((z) => Math.max(50, z - 25))}
+                className={styles.zoomBtn}
+                title="Zoom Out"
+                disabled={previewZoom <= 50}
+              >
+                <ZoomOut size={12} />
+              </button>
+              <span style={{ minWidth: 36, textAlign: "center", userSelect: "none" }}>{previewZoom}%</span>
+              <button
+                type="button"
+                onClick={() => setPreviewZoom((z) => Math.min(150, z + 25))}
+                className={styles.zoomBtn}
+                title="Zoom In"
+                disabled={previewZoom >= 150}
+              >
+                <ZoomIn size={12} />
+              </button>
             </div>
           </div>
 
           <div className={styles.canvas}>
-            {/* Phone device mockup */}
+            {/* Responsive Phone / Video Canvas Frame */}
             <div
               style={{
-                width: aspect === "916" || aspect === "original" ? "min(320px, 85vw)" : "100%",
-                maxWidth: "100%",
-                aspectRatio: aspect === "916" ? "9/16" : aspect === "169" ? "16/9" : aspect === "11" ? "1/1" : "auto",
+                height: previewDimensions.isLandscape
+                  ? `min(${Math.round(280 * (previewZoom / 100))}px, calc(100vh - 380px))`
+                  : `min(${Math.round(460 * (previewZoom / 100))}px, calc(100vh - 340px))`,
+                aspectRatio: previewDimensions.ratio,
+                maxHeight: "calc(100vh - 320px)",
+                maxWidth: "92vw",
                 background: "#09090b",
-                borderRadius: "min(32px, 6vw)",
-                padding: "min(10px, 2vw)",
-                border: "min(10px, 2vw) solid #1a1a1a",
-                boxShadow: "var(--shadow-deep)",
+                borderRadius: previewDimensions.isLandscape ? "14px" : "28px",
+                padding: "6px",
+                border: "6px solid #1c1c20",
+                boxShadow: "0 20px 50px rgba(0,0,0,0.6)",
                 position: "relative",
-                overflow: "hidden"
+                overflow: "hidden",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
               }}
             >
               <CaptionPlayer
@@ -946,6 +1078,8 @@ function EditorPage() {
                 subtitles={subtitles}
                 preset={preset}
                 videoUrl={videoUrl}
+                width={previewDimensions.compW}
+                height={previewDimensions.compH}
                 durationInFrames={Math.max(60, Math.ceil(totalDuration * 30))}
                 controls={false}
                 autoPlay={false}
@@ -1133,7 +1267,10 @@ function EditorPage() {
                     onClick={() => setPresetId(p.id)}
                   >
                     <div className={styles.templateCardName}>
-                      {p.name}
+                      <span>{p.name}</span>
+                      {p.id === "forget-status" && <span className={styles.editorialBadge}>Editorial</span>}
+                      {p.id === "focus-deeply" && <span className={styles.editorialBadge}>Editorial</span>}
+                      {p.id === "the-big-red" && <span className={styles.newBadge}>New</span>}
                       {p.id === "beast" && (
                         <span className={styles.hotBadge}>
                           <Flame size={9} /> Popular
@@ -1141,23 +1278,92 @@ function EditorPage() {
                       )}
                       {p.id === "karaoke" && <span className={styles.newBadge}>New</span>}
                     </div>
-                    <div
-                      className={styles.templatePreview}
-                      style={{ background: p.bg || "rgba(0,0,0,0.03)", color: p.color }}
-                    >
-                      <span
-                        style={{ fontSize: 9, color: "var(--text-secondary)", display: "block", marginBottom: 2 }}
-                      >
-                        the quick
-                      </span>
-                      <strong style={{ fontSize: 16, letterSpacing: "-0.02em", color: p.color }}>
-                        {p.name.split(" ")[0].toUpperCase()}
-                      </strong>
-                      <span
-                        style={{ fontSize: 9, color: "var(--text-secondary)", display: "block", marginTop: 2 }}
-                      >
-                        fox jumps
-                      </span>
+
+                    <div className={styles.templatePreview}>
+                      {p.id === "forget-status" ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                          <span style={{ fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic", fontSize: 17, color: "#ffffff", lineHeight: 1.1 }}>
+                            forget
+                          </span>
+                          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 900, fontSize: 20, color: "#38bdf8", textTransform: "uppercase", letterSpacing: "0.03em", textShadow: "0 0 16px rgba(56,189,248,0.85)" }}>
+                            STATUS
+                          </span>
+                        </div>
+                      ) : p.id === "focus-deeply" ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                          <span style={{ fontFamily: "'Playfair Display', serif", fontStyle: "italic", fontSize: 17, color: "#ffffff", lineHeight: 1.1 }}>
+                            focus
+                          </span>
+                          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 900, fontSize: 20, color: "#facc15", textTransform: "uppercase", letterSpacing: "0.03em", textShadow: "0 0 16px rgba(250,204,21,0.8)" }}>
+                            DEEPLY
+                          </span>
+                        </div>
+                      ) : p.id === "the-big-red" ? (
+                        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 46 }}>
+                          <span style={{ fontFamily: "'Cinzel', serif", fontWeight: 900, fontSize: 26, color: "#ef4444", textTransform: "uppercase", opacity: 0.85, letterSpacing: "0.08em", textShadow: "0 0 20px rgba(239,68,68,0.8)" }}>
+                            SECOND
+                          </span>
+                          <span style={{ position: "absolute", fontFamily: "'Playfair Display', Georgia, serif", fontStyle: "italic", fontSize: 13, color: "#ffffff", textShadow: "0 2px 6px rgba(0,0,0,0.95)" }}>
+                            every single
+                          </span>
+                        </div>
+                      ) : p.id === "the-little-things" ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'Caveat', cursive", fontSize: 18 }}>
+                          <span style={{ color: "#ffffff" }}>the</span>
+                          <span style={{ background: "#facc15", color: "#000000", padding: "1px 8px", borderRadius: 9999, fontWeight: 700, transform: "rotate(-2deg)" }}>
+                            little
+                          </span>
+                          <span style={{ color: "#ffffff" }}>things</span>
+                        </div>
+                      ) : p.id === "archives" ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                          <span style={{ fontFamily: "'Caveat', cursive", fontStyle: "italic", fontSize: 18, color: "#ffedd5" }}>
+                            Your <strong style={{ color: "#ffffff", fontWeight: 700 }}>Style</strong> is it
+                          </span>
+                          <svg width="60" height="6" viewBox="0 0 60 6" fill="none" style={{ marginTop: 2 }}>
+                            <path d="M1 3C10 5 20 1 30 3C40 5 50 1 59 3" stroke="#fde047" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                        </div>
+                      ) : p.id === "blockbuster" ? (
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                          <span style={{ fontFamily: "'Anton', sans-serif", fontSize: 18, color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.06em", textShadow: "0 0 16px rgba(239,68,68,0.9)" }}>
+                            THIS IS THE
+                          </span>
+                          <span style={{ fontFamily: "'Caveat', cursive", fontStyle: "italic", fontSize: 16, color: "#ffffff", marginTop: -4 }}>
+                            next big thing
+                          </span>
+                        </div>
+                      ) : p.id === "beast" ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 900, fontSize: 16, textTransform: "uppercase" }}>
+                          <span style={{ color: "#ffffff", textShadow: "0 2px 4px #000" }}>DON'T</span>
+                          <span style={{ background: "#facc15", color: "#000000", padding: "2px 8px", borderRadius: 6, boxShadow: "0 0 12px rgba(250,204,21,0.6)", transform: "scale(1.05)" }}>
+                            PANIC
+                          </span>
+                        </div>
+                      ) : p.id === "ali-abdaal" ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: "'Inter', sans-serif", fontWeight: 700, fontSize: 14 }}>
+                          <span style={{ color: "#ffffff" }}>Simple</span>
+                          <span style={{ color: "#facc15", borderBottom: "2px solid #facc15", paddingBottom: 1 }}>Productivity</span>
+                        </div>
+                      ) : p.id === "neon-glow" ? (
+                        <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 900, fontSize: 17, color: "#22d3ee", textTransform: "uppercase", textShadow: "0 0 16px rgba(34,211,238,0.95), 0 0 30px rgba(34,211,238,0.6)" }}>
+                          CYBER PULSE
+                        </div>
+                      ) : p.id === "karaoke" ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 800, fontSize: 15 }}>
+                          <span style={{ color: "#a1a1aa" }}>Sing</span>
+                          <span style={{ color: "#ec4899", textShadow: "0 0 12px rgba(236,72,153,0.8)", transform: "scale(1.1)" }}>ALONG</span>
+                          <span style={{ color: "#a1a1aa" }}>now</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: p.font || "inherit", fontWeight: p.weight || 800 }}>
+                          <span style={{ color: "#ffffff", fontSize: 13 }}>the</span>
+                          <span style={{ color: p.color || "#facc15", fontSize: 16, textTransform: p.case === "uppercase" ? "uppercase" : "none", textShadow: p.shadow && p.shadow !== "none" ? p.shadow : "none" }}>
+                            {p.name.split(" ")[0]}
+                          </span>
+                          <span style={{ color: "#ffffff", fontSize: 13 }}>story</span>
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -1206,68 +1412,19 @@ function EditorPage() {
             }}
             onSplit={handleSplitSegment}
             onDelete={handleDeleteSegment}
+            onAddSegment={(time) => {
+              addSegment(time, time + 2, "New caption");
+              push("New caption added");
+            }}
             selectedId={selectedSegId}
             onSelectSegment={setSelectedSegId}
             playing={playing}
+            onTogglePlay={togglePlay}
+            onUndo={undo}
+            onRedo={redo}
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 20px",
-            borderTop: "1px solid var(--border-subtle)",
-            background: "var(--bg-surface)",
-          }}
-        >
-          <button className={styles.transportBtn} onClick={() => handleTimelineSeek(0)} title="Go to start">
-            <SkipBack size={12} />
-          </button>
-          <button
-            className={styles.transportBtn}
-            onClick={() => handleTimelineSeek(Math.max(0, currentTime - 1 / 30))}
-            title="Previous frame (←)"
-          >
-            <ChevronLeft size={12} />
-          </button>
-          <button className={styles.playBtn} onClick={() => { const p = playerRef.current; if (!p) return; if (p.isPlaying()) { p.pause(); } else { p.play(); } }}>
-            {playing ? <Pause size={11} /> : <Play size={11} />}
-          </button>
-          <button
-            className={styles.transportBtn}
-            onClick={() => handleTimelineSeek(Math.min(totalDuration, currentTime + 1 / 30))}
-            title="Next frame (→)"
-          >
-            <ChevronRight size={12} />
-          </button>
-          <button className={styles.transportBtn} onClick={() => handleTimelineSeek(totalDuration)} title="Go to end">
-            <SkipForward size={12} />
-          </button>
-          <span className={styles.timecode}>
-            {fmt(currentTime)} / {fmt(totalDuration)}
-          </span>
-
-          <div style={{ flex: 1 }} />
-
-          <select
-            className={styles.speedSelect}
-            value={playbackRate}
-            onChange={(e) => setPlaybackRate(Number(e.target.value))}
-            title="Playback speed"
-          >
-            <option value={0.25}>0.25x</option>
-            <option value={0.5}>0.5x</option>
-            <option value={0.75}>0.75x</option>
-            <option value={1}>1x</option>
-            <option value={1.25}>1.25x</option>
-            <option value={1.5}>1.5x</option>
-            <option value={2}>2x</option>
-          </select>
-
-          <span style={{ fontSize: 10, color: "var(--text-tertiary)", fontFamily: "ui-monospace, monospace", marginLeft: 4 }}>
-            Space
-          </span>
         </div>
       </div>
 

@@ -56,7 +56,6 @@ const NAV_ITEMS = [
 const NAV_ITEMS2 = [
   { icon: LayoutTemplate, label: "Templates", href: "/templates" },
   { icon: Puzzle, label: "Editor plugin", href: "/plugin/download" },
-  { icon: CreditCard, label: "Manage subscription", href: "/pricing" },
 ];
 
 function DashboardPage() {
@@ -152,10 +151,11 @@ function DashboardPage() {
         console.warn("Grok Vision skipped:", e.message);
       }
 
+      let fileUrl = null;
       let extractedSubtitles = [];
       let transRes;
       try {
-        const fileUrl = await getVideoUrl(storageKey);
+        fileUrl = await getVideoUrl(storageKey);
 
         if (provider === "sarvam") {
           push("Transcribing with SarvamAI...");
@@ -167,6 +167,17 @@ function DashboardPage() {
               language: language === "auto" ? "hinglish" : language,
             },
           });
+          if (!transRes?.ok || !transRes?.subtitles?.length) {
+            push("Sarvam limit/issue: auto-switching to Groq Whisper...");
+            transRes = await transcribeFromStorage({
+              data: {
+                fileUrl,
+                fileName: file.name,
+                mimeType: file.type || "video/mp4",
+                language: language === "auto" ? "hinglish" : language,
+              },
+            });
+          }
         } else if (provider === "gemini") {
           push("Transcribing with Google Gemini...");
           transRes = await transcribeWithGemini({
@@ -177,6 +188,17 @@ function DashboardPage() {
               language: language === "auto" ? "hinglish" : language,
             },
           });
+          if (!transRes?.ok || !transRes?.subtitles?.length) {
+            push("Gemini issue: auto-switching to Groq Whisper...");
+            transRes = await transcribeFromStorage({
+              data: {
+                fileUrl,
+                fileName: file.name,
+                mimeType: file.type || "video/mp4",
+                language: language === "auto" ? "hinglish" : language,
+              },
+            });
+          }
         } else {
           push("Transcribing with Groq Whisper...");
           transRes = await transcribeFromStorage({
@@ -184,6 +206,7 @@ function DashboardPage() {
               fileUrl,
               fileName: file.name,
               mimeType: file.type || "video/mp4",
+              language: language === "auto" ? "hinglish" : language,
             },
           });
         }
@@ -215,6 +238,10 @@ function DashboardPage() {
       const title = file.name.replace(/\.[^.]+$/, "");
       const job = await createJob({ title, language, writingSystem, storageKey, aiDescription });
 
+      if (fileUrl) {
+        localStorage.setItem(`video_url_${job.id}`, fileUrl);
+        sessionStorage.setItem(`video_url_${job.id}`, fileUrl);
+      }
       localStorage.setItem(`subtitles_${job.id}`, JSON.stringify(extractedSubtitles));
       saveSubtitles(job.id, extractedSubtitles).catch(console.warn);
 
@@ -238,6 +265,14 @@ function DashboardPage() {
     }
   };
 
+  const closeModal = useCallback(() => {
+    if (modalVideoUrl) {
+      URL.revokeObjectURL(modalVideoUrl);
+    }
+    setModalFile(null);
+    setModalVideoUrl(null);
+  }, [modalVideoUrl]);
+
   const handleDelete = async (e, jobId) => {
     e.preventDefault();
     e.stopPropagation();
@@ -246,6 +281,10 @@ function DashboardPage() {
 
     try {
       await deleteJob(jobId);
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(`subtitles_${jobId}`);
+        localStorage.removeItem(`subtitles_${jobId}_original`);
+      }
       setJobs((prev) => prev.filter((j) => j.id !== jobId));
       push("Project deleted.");
     } catch (err) {
@@ -377,26 +416,21 @@ function DashboardPage() {
               Admin Panel
             </Link>
           )}
-
-          <Link to="/pricing" className={styles.upgradeBtn}>
-            <Star size={14} />
-            Upgrade to Pro
-          </Link>
         </nav>
 
         <div className={styles.usageMeter}>
           <div className={styles.usageTop}>
-            <span className={styles.usagePlan}>FREE</span>
-            <span className={styles.usageBadge}>FREE</span>
+            <span className={styles.usagePlan}>STUDIO PRO</span>
+            <span className={styles.usageBadge} style={{ background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }}>ACTIVE</span>
           </div>
           <div className={styles.usageRow}>
-            <span className={styles.usageLabel}>Transcription</span>
-            <span className={styles.usageVal}>2 mins left</span>
+            <span className={styles.usageLabel}>AI Transcription</span>
+            <span className={styles.usageVal} style={{ color: "var(--primary)" }}>Unlimited</span>
           </div>
           <div
             style={{
               height: 4,
-              background: "rgba(0,0,0,0.06)",
+              background: "rgba(255,255,255,0.08)",
               borderRadius: 4,
               marginBottom: 8,
               overflow: "hidden",
@@ -404,16 +438,14 @@ function DashboardPage() {
           >
             <div
               style={{
-                width: "0%",
+                width: "100%",
                 height: "100%",
-                background: "var(--primary)",
+                background: "linear-gradient(90deg, var(--primary), #10b981)",
                 borderRadius: 4,
-                transition: "width 150ms ease",
               }}
             />
           </div>
-          <div className={styles.usageReset}>Allowance resets in 25 days</div>
-          <button className={styles.upgradeNowBtn} onClick={() => navigate({ to: "/pricing" })}>Upgrade Now</button>
+          <div className={styles.usageReset}>All features unlocked</div>
         </div>
 
         <div className={styles.userCard}>
@@ -721,10 +753,7 @@ function DashboardPage() {
           >
             <button
               className={styles.modalClose}
-              onClick={() => {
-                setModalFile(null);
-                setModalVideoUrl(null);
-              }}
+              onClick={closeModal}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -868,16 +897,16 @@ function DashboardPage() {
                     onChange={(e) => setProvider(e.target.value)}
                     disabled={transcribing}
                   >
-                    <option value="groq">Groq (Whisper) — Fast, global</option>
-                    <option value="sarvam">SarvamAI — Best for Indian languages</option>
-                    <option value="gemini">Google Gemini — Multilingual AI</option>
+                    <option value="groq">⚡ Groq (Whisper) — Recommended (Any length, Roman Hinglish)</option>
+                    <option value="sarvam">🇮🇳 SarvamAI — Indian languages (Max 30s clips)</option>
+                    <option value="gemini">✨ Google Gemini — Multimodal AI</option>
                   </select>
                   <div className={styles.langSelectHint}>
-                    {provider === "sarvam"
-                      ? "Native Hinglish support with codemix mode"
-                      : provider === "gemini"
-                        ? "Gemini understands Hinglish & code-mixed speech natively"
-                        : "General-purpose transcription, requires API key"}
+                    {provider === "groq"
+                      ? "Fastest transcription with automatic Roman Hinglish transliteration & no duration limit"
+                      : provider === "sarvam"
+                        ? "Specialized Indian language model (Note: Synchronous API limited to 30s max)"
+                        : "Multilingual transcription model"}
                   </div>
                 </div>
               </div>

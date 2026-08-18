@@ -51,6 +51,24 @@ export const analyzeWithGrokServer = createServerFn({ method: "POST" })
     return { ok: true, description };
   });
 
+import { devanagariToHinglish } from "./scriptConverter";
+
+const WHISPER_LANG_MAP = {
+  hinglish: "hi",
+  hindi: "hi",
+  auto: "hi",
+  marathi: "mr",
+  punjabi: "pa",
+  gujarati: "gu",
+  tamil: "ta",
+  telugu: "te",
+  bengali: "bn",
+  kannada: "kn",
+  malayalam: "ml",
+  urdu: "ur",
+  english: "en",
+};
+
 /**
  * Server-side Groq Whisper transcription — downloads from a provided URL (e.g. signed URL)
  */
@@ -64,6 +82,7 @@ export const transcribeFromStorage = createServerFn({ method: "POST" })
       fileUrl: payload.fileUrl,
       fileName: payload.fileName || "audio.mp4",
       mimeType: payload.mimeType || "video/mp4",
+      language: payload.language || "hinglish",
     };
   })
   .handler(async ({ data }) => {
@@ -84,47 +103,175 @@ export const transcribeFromStorage = createServerFn({ method: "POST" })
     console.log(`[transcribe] Downloaded ${(buffer.length / 1024 / 1024).toFixed(1)} MB`);
 
     const groq = new Groq({ apiKey });
-    const audioFile = await toFile(buffer, fileName, { type: data.mimeType || "audio/mp4" });
-    const transcription = await groq.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-large-v3-turbo",
-      temperature: 0,
-      response_format: "verbose_json",
-      timestamp_granularities: ["word"],
-    });
 
-    console.log("[transcribe] Whisper result:", transcription.text?.slice(0, 150));
+    // Ensure fileName has a valid extension allowed by Groq: [flac, mp3, mp4, m4a, ogg, wav, webm]
+    let safeFileName = (data.fileName || "audio.mp4").replace(/\.(mov|quicktime|mkv|avi|wmv|ts|3gp)$/i, ".mp4");
+    if (!/\.(flac|mp3|mp4|m4a|ogg|wav|webm)$/i.test(safeFileName)) {
+      safeFileName = "audio.mp4";
+    }
+    const audioFile = await toFile(buffer, safeFileName, { type: "audio/mp4" });
 
-    // Group words into caption lines of ~4 words each
-    const subtitles = [];
+    // For Hinglish or Auto, let Whisper auto-detect mixed speech with a guiding Hinglish prompt
+    const isHinglish = !data.language || data.language === "hinglish" || data.language === "auto";
+    const whisperLang = data.language === "hindi"
+      ? "hi"
+      : data.language === "english"
+        ? "en"
+        : (data.language && WHISPER_LANG_MAP[data.language?.toLowerCase()]) || undefined;
+
+    const hinglishPrompt = isHinglish
+      ? "This video is in Hinglish (Hindi + English mixed speech). Transcribe English words in English (e.g. model, AI, launch, outperformed, startup, options, video) and Hindi words in Roman script (e.g. unhone, ek naya, kar diya, kya, toh, hai, hain)."
+      : undefined;
+
+    console.log(`[transcribe] Running Whisper with language=${whisperLang}, isHinglish=${isHinglish}, file=${safeFileName}`);
+
+    let transcription;
+    try {
+      transcription = await groq.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-large-v3-turbo",
+        temperature: 0,
+        ...(whisperLang ? { language: whisperLang } : {}),
+        ...(hinglishPrompt ? { prompt: hinglishPrompt } : {}),
+        response_format: "verbose_json",
+        timestamp_granularities: ["word"],
+      });
+    } catch (whisperErr) {
+      console.error("[transcribe] Groq Whisper error:", whisperErr);
+      return { ok: false, subtitles: [], error: whisperErr.message || "Groq Whisper transcription failed" };
+    }
+
+    console.log("[transcribe] Whisper raw output:", transcription.text?.slice(0, 200));
+
+    // Group words into punchy, pause-synchronized caption lines (~2-4 words)
+    let subtitles = [];
     const words = transcription.words || [];
 
     if (words.length > 0) {
       let currentLine = [];
-      let lineStart = 0;
+      let lineStart = words[0]?.start ?? 0;
+      let prevEnd = words[0]?.start ?? 0;
+
       words.forEach((wordObj, i) => {
-        if (currentLine.length === 0) lineStart = wordObj.start;
-        currentLine.push(wordObj.word.trim());
-        if (currentLine.length >= 4 || i === words.length - 1) {
+        const wordText = wordObj.word.trim();
+        if (!wordText) return;
+
+        const isPause = (wordObj.start - prevEnd) > 0.35; // Pause >350ms signals clause boundary
+        const isLongLine = currentLine.length >= 3;
+        const isMaxLine = currentLine.length >= 4;
+
+        if (currentLine.length > 0 && (isPause || isMaxLine || (isLongLine && (wordObj.end - lineStart) > 1.8))) {
+          let lineText = currentLine.join(" ");
+          if (isHinglish && /[\u0900-\u097F]/.test(lineText)) {
+            lineText = devanagariToHinglish(lineText);
+          }
           subtitles.push({
-            id: Math.random().toString(36).substring(2, 9),
-            start: lineStart,
-            end: wordObj.end,
-            text: currentLine.join(" "),
+            id: `sub-${Math.random().toString(36).substring(2, 9)}`,
+            start: Number(lineStart.toFixed(2)),
+            end: Number(prevEnd.toFixed(2)),
+            text: lineText,
           });
           currentLine = [];
+          lineStart = wordObj.start;
+        }
+
+        if (currentLine.length === 0) {
+          lineStart = wordObj.start;
+        }
+        currentLine.push(wordText);
+        prevEnd = wordObj.end;
+
+        if (i === words.length - 1 && currentLine.length > 0) {
+          let lineText = currentLine.join(" ");
+          if (isHinglish && /[\u0900-\u097F]/.test(lineText)) {
+            lineText = devanagariToHinglish(lineText);
+          }
+          subtitles.push({
+            id: `sub-${Math.random().toString(36).substring(2, 9)}`,
+            start: Number(lineStart.toFixed(2)),
+            end: Number(wordObj.end.toFixed(2)),
+            text: lineText,
+          });
         }
       });
     } else if (transcription.segments?.length > 0) {
-      // Fallback: use segment-level timestamps
+      // Fallback: split long segments into punchy clauses of 3-4 words
       transcription.segments.forEach((seg) => {
-        subtitles.push({
-          id: Math.random().toString(36).substring(2, 9),
-          start: seg.start,
-          end: seg.end,
-          text: seg.text.trim(),
-        });
+        const segWords = seg.text.trim().split(/\s+/).filter(Boolean);
+        if (segWords.length <= 4) {
+          let segText = seg.text.trim();
+          if (isHinglish && /[\u0900-\u097F]/.test(segText)) {
+            segText = devanagariToHinglish(segText);
+          }
+          subtitles.push({
+            id: `sub-${Math.random().toString(36).substring(2, 9)}`,
+            start: Number(seg.start.toFixed(2)),
+            end: Number(seg.end.toFixed(2)),
+            text: segText,
+          });
+        } else {
+          const chunkSize = 3;
+          const totalDur = seg.end - seg.start;
+          const chunkDur = totalDur / Math.ceil(segWords.length / chunkSize);
+          for (let c = 0; c < segWords.length; c += chunkSize) {
+            const chunkWords = segWords.slice(c, c + chunkSize);
+            let chunkText = chunkWords.join(" ");
+            if (isHinglish && /[\u0900-\u097F]/.test(chunkText)) {
+              chunkText = devanagariToHinglish(chunkText);
+            }
+            const chunkIdx = Math.floor(c / chunkSize);
+            subtitles.push({
+              id: `sub-${Math.random().toString(36).substring(2, 9)}`,
+              start: Number((seg.start + chunkIdx * chunkDur).toFixed(2)),
+              end: Number(Math.min(seg.end, seg.start + (chunkIdx + 1) * chunkDur).toFixed(2)),
+              text: chunkText,
+            });
+          }
+        }
       });
+    }
+
+    // If Hinglish requested, use fast Groq LLM to ensure all Hindi words are in Roman script
+    if (isHinglish && subtitles.length > 0) {
+      try {
+        const textArray = subtitles.map((s) => s.text);
+        const completion = await groq.chat.completions.create({
+          model: "openai/gpt-oss-120b",
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert Hinglish subtitle writer for viral social media reels.
+Convert each line in the array into natural, conversational Roman Hinglish (Hindi/English code-mixed speech written in the English alphabet).
+
+CRITICAL INSTRUCTIONS:
+1. If the input is in Devanagari Hindi (e.g. "लड़कियों के लिए तो ऑप्शंस हैं" or "उन्होंने एक नया मॉडल लॉन्च कर दिया"), transliterate it into Roman Hinglish: "Ladkiyon ke liye toh options hain" or "Unhone ek naya model launch kar diya".
+2. If the input was translated into English by speech recognition (e.g. "They launched a new model" or "This model outperforms Mythos"), convert it into how an Indian creator actually says it in Hinglish: "Unhone ek naya model launch kiya" or "Yeh model Mythos ko outperform kar raha hai".
+3. Keep tech and common English words in English (model, launch, outperform, options, startup, video, AI, bro).
+4. Return ONLY a valid JSON array of strings of exact length ${textArray.length}.`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify(textArray),
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 2000,
+        });
+
+        const reply = completion.choices?.[0]?.message?.content?.trim() || "";
+        const jsonMatch = reply.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length === subtitles.length) {
+            subtitles = subtitles.map((s, idx) => ({
+              ...s,
+              text: parsed[idx] || s.text,
+            }));
+          }
+        }
+      } catch (llmErr) {
+        console.warn("[transcribe] Hinglish LLM refinement skipped:", llmErr.message);
+      }
     }
 
     return {
@@ -160,23 +307,34 @@ export const transcribeVideo = createServerFn({ method: "POST" })
     const groq = new Groq({ apiKey });
 
     const buffer = Buffer.from(data.audioBase64, "base64");
-    const audioFile = await toFile(buffer, data.fileName, { type: data.mimeType });
+    let safeFileName = (data.fileName || "audio.mp4").replace(/\.(mov|quicktime|mkv|avi|wmv|ts|3gp)$/i, ".mp4");
+    if (!/\.(flac|mp3|mp4|m4a|ogg|wav|webm)$/i.test(safeFileName)) {
+      safeFileName = "audio.mp4";
+    }
+    const audioFile = await toFile(buffer, safeFileName, { type: "audio/mp4" });
 
     console.log(
-      `Sending to Groq Whisper: ${data.fileName} (${(buffer.length / 1024).toFixed(0)} KB)`,
+      `Sending to Groq Whisper: ${safeFileName} (${(buffer.length / 1024).toFixed(0)} KB)`,
     );
 
-    const transcription = await groq.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-large-v3-turbo",
-      temperature: 0,
-      response_format: "verbose_json",
-      timestamp_granularities: ["word"],
-    });
+    let transcription;
+    try {
+      transcription = await groq.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-large-v3-turbo",
+        temperature: 0,
+        prompt: "This video is in Hinglish (Hindi + English mixed speech). Transcribe English words in English and Hindi words in Roman script (e.g. unhone ek naya model launch kar diya).",
+        response_format: "verbose_json",
+        timestamp_granularities: ["word"],
+      });
+    } catch (whisperErr) {
+      console.error("[transcribeVideo] Groq Whisper error:", whisperErr);
+      return { ok: false, subtitles: [], error: whisperErr.message || "Groq Whisper transcription failed" };
+    }
 
     console.log("Groq Whisper transcript preview:", transcription.text?.slice(0, 150));
 
-    const subtitles = [];
+    let subtitles = [];
     const words = transcription.words || [];
 
     if (words.length > 0) {
@@ -186,24 +344,67 @@ export const transcribeVideo = createServerFn({ method: "POST" })
         if (currentLine.length === 0) lineStart = wordObj.start;
         currentLine.push(wordObj.word.trim());
         if (currentLine.length >= 4 || i === words.length - 1) {
+          let lineText = currentLine.join(" ");
+          lineText = devanagariToHinglish(lineText);
           subtitles.push({
             id: Math.random().toString(36).substring(2, 9),
             start: lineStart,
             end: wordObj.end,
-            text: currentLine.join(" "),
+            text: lineText,
           });
           currentLine = [];
         }
       });
     } else if (transcription.segments?.length > 0) {
       transcription.segments.forEach((seg) => {
+        let segText = devanagariToHinglish(seg.text.trim());
         subtitles.push({
           id: Math.random().toString(36).substring(2, 9),
           start: seg.start,
           end: seg.end,
-          text: seg.text.trim(),
+          text: segText,
         });
       });
+    }
+
+    if (subtitles.length > 0) {
+      try {
+        const textArray = subtitles.map((s) => s.text);
+        const completion = await groq.chat.completions.create({
+          model: "openai/gpt-oss-120b",
+          messages: [
+            {
+              role: "system",
+              content: `You are an expert Hinglish subtitle writer. Convert the input array of subtitle lines into conversational Roman Hinglish (Hindi/English code-mixed speech written in the English alphabet).
+Rules:
+- Do NOT translate Hindi into pure English. Transliterate spoken Hindi into Roman alphabet (e.g. "ladkiyon ke liye toh options hain", "mera naam preet hai", "aaj hum baat karenge").
+- Keep English words in English (e.g. "options", "startup", "video", "bro", "there are").
+- Maintain natural casing and punctuation.
+- Return ONLY a valid JSON array of strings of exact length ${textArray.length}.`,
+            },
+            {
+              role: "user",
+              content: JSON.stringify(textArray),
+            },
+          ],
+          temperature: 0.1,
+          max_tokens: 2000,
+        });
+
+        const reply = completion.choices?.[0]?.message?.content?.trim() || "";
+        const jsonMatch = reply.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(parsed) && parsed.length === subtitles.length) {
+            subtitles = subtitles.map((s, idx) => ({
+              ...s,
+              text: parsed[idx] || s.text,
+            }));
+          }
+        }
+      } catch (llmErr) {
+        console.warn("[transcribeVideo] Hinglish LLM refinement skipped:", llmErr.message);
+      }
     }
 
     return {
@@ -212,4 +413,62 @@ export const transcribeVideo = createServerFn({ method: "POST" })
       rawText: transcription.text,
       wordCount: words.length,
     };
+  });
+
+/**
+ * Server-side AI Transliteration & Normalization to Roman Hinglish.
+ * Uses Groq Llama 3.3 70B to convert English translations or Devanagari Hindi text
+ * into authentic conversational Roman Hinglish.
+ */
+export const convertToHinglishServer = createServerFn({ method: "POST" })
+  .validator((input) => {
+    const payload = input?.data ? input.data : input;
+    if (!payload || !Array.isArray(payload.lines)) {
+      throw new Error("lines array is required");
+    }
+    return { lines: payload.lines };
+  })
+  .handler(async ({ data }) => {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return { ok: false, lines: data.lines, error: "GROQ_API_KEY missing" };
+    }
+
+    try {
+      const groq = new Groq({ apiKey });
+      const completion = await groq.chat.completions.create({
+        model: "openai/gpt-oss-120b",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert Hinglish subtitle writer for viral social media reels.
+Convert each line in the array into natural, conversational Roman Hinglish (Hindi/English code-mixed speech written in the English alphabet).
+
+CRITICAL INSTRUCTIONS:
+1. If the input is in Devanagari Hindi (e.g. "लड़कियों के लिए तो ऑप्शंस हैं" or "उन्होंने एक नया मॉडल लॉन्च कर दिया"), transliterate it into Roman Hinglish: "Ladkiyon ke liye toh options hain" or "Unhone ek naya model launch kar diya".
+2. If the input was translated into English by speech recognition (e.g. "They launched a new model" or "This model outperforms Mythos" or "There are options"), convert it into how an Indian creator actually says it in Hinglish: "Unhone ek naya model launch kiya" or "Yeh model Mythos ko outperform kar raha hai" or "Options hi options hain".
+3. Keep tech and common English words in English (model, launch, outperform, options, startup, video, AI, bro).
+4. Return ONLY a valid JSON array of strings of exact length ${data.lines.length}.`,
+          },
+          {
+            role: "user",
+            content: JSON.stringify(data.lines),
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 2500,
+      });
+
+      const reply = completion.choices?.[0]?.message?.content?.trim() || "";
+      const jsonMatch = reply.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (Array.isArray(parsed) && parsed.length === data.lines.length) {
+          return { ok: true, lines: parsed };
+        }
+      }
+    } catch (err) {
+      console.warn("convertToHinglishServer error:", err.message);
+    }
+    return { ok: false, lines: data.lines.map((t) => devanagariToHinglish(t)) };
   });

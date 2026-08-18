@@ -1,6 +1,7 @@
 "use server";
 import { createServerFn } from "@tanstack/react-start";
 import { toFile } from "groq-sdk";
+import { devanagariToHinglish } from "./scriptConverter";
 
 const __fetch = globalThis.fetch;
 
@@ -167,11 +168,16 @@ export const transcribeWithSarvam = createServerFn({ method: "POST" })
         if (currentLine.length === 0) lineStart = start;
         currentLine.push(word);
         if (currentLine.length >= 4 || i === wordEntries.length - 1) {
+          let lineText = currentLine.join(" ");
+          const isHinglish = !data.language || data.language === "hinglish" || data.language === "auto";
+          if (isHinglish && /[\u0900-\u097F]/.test(lineText)) {
+            lineText = devanagariToHinglish(lineText);
+          }
           subtitles.push({
             id: Math.random().toString(36).substring(2, 9),
             start: lineStart,
             end,
-            text: currentLine.join(" "),
+            text: lineText,
           });
           currentLine = [];
         }
@@ -180,11 +186,16 @@ export const transcribeWithSarvam = createServerFn({ method: "POST" })
 
     // Fallback: use full transcript if no word-level data
     if (subtitles.length === 0 && result.transcript != null && result.transcript !== "") {
+      let fullText = String(result.transcript).trim();
+      const isHinglish = !data.language || data.language === "hinglish" || data.language === "auto";
+      if (isHinglish && /[\u0900-\u097F]/.test(fullText)) {
+        fullText = devanagariToHinglish(fullText);
+      }
       subtitles.push({
         id: Math.random().toString(36).substring(2, 9),
         start: 0,
         end: 5,
-        text: String(result.transcript).trim(),
+        text: fullText,
       });
     }
 

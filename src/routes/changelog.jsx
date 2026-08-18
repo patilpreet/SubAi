@@ -8,15 +8,15 @@ export const Route = createFileRoute("/changelog")({
 const CHANGES = [
   {
     version: "1.2.0",
-    date: "July 8, 2026",
+    date: "August 2026",
     items: [
-      "AI Hook Generator \u2014 rewrite your opening 30 seconds with one click",
-      "Three scripts from one take \u2014 switch between Roman Hinglish, Native script, and English translation",
-      "New pricing page with Indian pricing (\u20B99 first export, \u20B959 Week Pass)",
-      "Razorpay payment integration for UPI, cards, and netbanking",
-      "Watermark system for free tier exports",
+      "Multi-Track NLE Timeline with 60FPS magnetic playhead tracking",
+      "Editorial Duo kinetic typography (stacked italic serif + glowing bold uppercase)",
+      "Pause-aware speech segmentation with Whisper-large-v3 timestamping",
+      "AI Hook Generator — rewrite opening hooks with Groq LLM",
+      "Real-time audio waveform visualizer and drag-to-trim subtitle capsules",
       "NLE plugin support page for Premiere Pro, After Effects, and DaVinci Resolve",
-      "Templates gallery page",
+      "Templates gallery with live animated typography previews",
     ],
   },
   {

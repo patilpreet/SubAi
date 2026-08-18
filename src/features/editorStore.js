@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { devanagariToHinglish } from "../lib/scriptConverter";
 
 const clone = (arr) => arr.map((s) => ({ ...s }));
 
@@ -18,16 +19,23 @@ export const useEditorStore = create((set, get) => ({
 
   runCleanup: () => {
     const { subtitles, past } = get();
-    const next = subtitles.map((s) => ({
-      ...s,
-      text: s.text
+    const next = subtitles.map((s) => {
+      let cleaned = s.text;
+      if (/[\u0900-\u097F]/.test(cleaned)) {
+        cleaned = devanagariToHinglish(cleaned);
+      }
+      cleaned = cleaned
         .replace(/\s+/g, " ")
         .replace(/\bu\b/gi, "you")
         .replace(/\br\b/gi, "are")
         .replace(/^\s*[,.!?]+/, "")
         .trim()
-        .replace(/^./, (c) => c.toUpperCase()),
-    }));
+        .replace(/^./, (c) => c.toUpperCase());
+      return {
+        ...s,
+        text: cleaned,
+      };
+    });
     set({ subtitles: next, past: [...past, subtitles], future: [] });
   },
 
@@ -80,6 +88,18 @@ export const useEditorStore = create((set, get) => ({
   deleteSegment: (id) => {
     const { subtitles, past } = get();
     const next = subtitles.filter((s) => s.id !== id);
+    set({ subtitles: next, past: [...past, subtitles], future: [] });
+  },
+
+  addSegment: (start, end, text = "New caption") => {
+    const { subtitles, past } = get();
+    const newSeg = {
+      id: `seg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      start: Math.max(0, start),
+      end: Math.max(start + 0.5, end),
+      text,
+    };
+    const next = [...subtitles, newSeg].sort((a, b) => a.start - b.start);
     set({ subtitles: next, past: [...past, subtitles], future: [] });
   },
 

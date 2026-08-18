@@ -4,6 +4,7 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { useAuthStore } from "../lib/authStore";
+import { WebGLBackground } from "../features/WebGLBackground";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -35,27 +36,37 @@ export const Route = createRootRoute({
   component: RootComponent,
   notFoundComponent: NotFound,
   errorComponent: ({ error, reset }: { error: Error; reset: () => void }) => (
-    <div style={{ padding: 40 }}>
-      <h1>Something broke</h1>
-      <pre style={{ color: "#a1a1aa" }}>
+    <div style={{ padding: 40, background: "var(--bg-base)", color: "var(--text-primary)", minHeight: "100vh" }}>
+      <h1 style={{ fontSize: 24, fontWeight: 700 }}>Something broke</h1>
+      <pre style={{ color: "var(--text-secondary)", marginTop: 8 }}>
         {error instanceof Error ? error.message : String(error)}
       </pre>
-      <button onClick={reset}>Retry</button>
+      <button
+        onClick={reset}
+        style={{
+          marginTop: 16,
+          padding: "8px 20px",
+          borderRadius: 9999,
+          background: "var(--primary)",
+          color: "#030303",
+          border: "none",
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: "pointer",
+        }}
+      >
+        Retry
+      </button>
     </div>
   ),
 });
 
 function RootComponent() {
   const init = useAuthStore((s: any) => s.init);
-  const _unsubscribe = useAuthStore((s: any) => s._unsubscribe);
 
   useEffect(() => {
     init();
-    return () => {
-      _unsubscribe?.();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [init]);
 
   return <Outlet />;
 }
@@ -67,6 +78,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <WebGLBackground />
         {children}
         <Scripts />
       </body>
@@ -76,9 +88,27 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function NotFound() {
   return (
-    <div style={{ padding: 40 }}>
-      <h1>404</h1>
-      <a href="/" style={{ color: "#facc15" }}>
+    <div
+      style={{
+        padding: 40,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "var(--bg-base)",
+      }}
+    >
+      <h1 style={{ fontSize: 48, fontWeight: 700, color: "var(--text-primary)" }}>404</h1>
+      <a
+        href="/"
+        style={{
+          color: "var(--primary)",
+          marginTop: 8,
+          fontSize: 14,
+          fontWeight: 500,
+        }}
+      >
         Back home
       </a>
     </div>

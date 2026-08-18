@@ -1,5 +1,6 @@
 "use server";
 import { createServerFn } from "@tanstack/react-start";
+import { devanagariToHinglish } from "./scriptConverter";
 
 const __fetch = globalThis.fetch;
 
@@ -180,12 +181,19 @@ Example output:
         (item) =>
           item && typeof item.start === "number" && typeof item.end === "number" && item.text,
       )
-      .map((item) => ({
-        id: Math.random().toString(36).substring(2, 9),
-        start: Math.max(0, Number(item.start)),
-        end: Math.max(Number(item.start) + 0.1, Number(item.end)),
-        text: String(item.text).trim(),
-      }))
+      .map((item) => {
+        let segText = String(item.text).trim();
+        const isHinglish = !data.language || data.language === "hinglish" || data.language === "auto";
+        if (isHinglish && /[\u0900-\u097F]/.test(segText)) {
+          segText = devanagariToHinglish(segText);
+        }
+        return {
+          id: Math.random().toString(36).substring(2, 9),
+          start: Math.max(0, Number(item.start)),
+          end: Math.max(Number(item.start) + 0.1, Number(item.end)),
+          text: segText,
+        };
+      })
       .sort((a, b) => a.start - b.start);
 
     if (subtitles.length === 0) {

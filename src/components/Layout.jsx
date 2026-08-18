@@ -4,7 +4,6 @@ import { useTheme } from "../hooks/useTheme";
 
 const NAV_LINKS = [
   { to: "/templates", label: "Templates" },
-  { to: "/pricing", label: "Pricing" },
   { to: "/plugin/download", label: "Plugin" },
   { to: "/changelog", label: "Changelog" },
   { to: "/about", label: "About" },
@@ -150,10 +149,10 @@ export function Layout({ children, hideNav, hideFooter }) {
               <ul className="space-y-3 text-sm text-[var(--text-secondary)]">
                 <li>
                   <Link
-                    to="/pricing"
+                    to="/templates"
                     className="hover:text-[var(--primary)] transition-colors duration-200"
                   >
-                    Pricing
+                    Templates
                   </Link>
                 </li>
                 <li>

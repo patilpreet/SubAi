@@ -192,6 +192,146 @@ const HINGLISH_TO_ENGLISH = {
   sakta: "can",
 };
 
+const DEVANAGARI_WORDS_MAP = {
+  "लड़कियों": "ladkiyon",
+  "लड़कियां": "ladkiyan",
+  "लड़के": "ladke",
+  "लोगों": "logon",
+  "लोग": "log",
+  "ऑप्शंस": "options",
+  "ऑप्शन": "option",
+  "वीडियो": "video",
+  "स्टार्टअप": "startup",
+  "कंटेंट": "content",
+  "क्रिएटर": "creator",
+  "टाइम": "time",
+  "फोकस": "focus",
+  "गेम": "game",
+  "लाइफ": "life",
+  "है": "hai",
+  "हैं": "hain",
+  "नहीं": "nahi",
+  "करो": "karo",
+  "सुनो": "suno",
+  "भाई": "bhai",
+  "यार": "yaar",
+  "क्या": "kya",
+  "बहुत": "bahut",
+  "अच्छा": "accha",
+  "ठीक": "theek",
+  "चलो": "chalo",
+  "देखो": "dekho",
+  "आप": "aap",
+  "तुम": "tum",
+  "मैं": "main",
+  "हम": "hum",
+  "कैसे": "kaise",
+  "कब": "kab",
+  "कहाँ": "kahan",
+  "क्यों": "kyun",
+  "क्योंकि": "kyuki",
+  "लेकिन": "lekin",
+  "और": "aur",
+  "तो": "toh",
+  "फिर": "phir",
+  "अभी": "abhi",
+  "वही": "wahi",
+  "बात": "baat",
+  "काम": "kaam",
+  "दिन": "din",
+  "रात": "raat",
+  "दोस्त": "dost",
+  "प्यार": "pyar",
+  "सिर्फ": "sirf",
+  "हर": "har",
+  "थोड़ा": "thoda",
+  "इसके": "iske",
+  "बारे": "baare",
+  "में": "mein",
+  "सकते": "sakte",
+  "हो": "ho",
+  "सकता": "sakta",
+  "यह": "yeh",
+  "वो": "woh",
+  "ये": "ye",
+  "उन": "un",
+  "मुझे": "mujhe",
+  "तुझे": "tujhe",
+  "उसको": "usko",
+  "इसको": "isko",
+  "कुछ": "kuch",
+  "सब": "sab",
+  "अपना": "apna",
+  "अपनी": "apni",
+  "मेरे": "mere",
+  "तेरे": "tere",
+  "उसका": "uska",
+  "इसका": "iska",
+  "मगर": "magar",
+  "या": "ya",
+  "पर": "par",
+  "से": "se",
+  "के": "ke",
+  "की": "ki",
+  "का": "ka",
+  "लिए": "liye",
+  "था": "tha",
+  "थी": "thi",
+  "थे": "the",
+  "होगा": "hoga",
+  "होगी": "hogi",
+  "होंगे": "honge",
+};
+
+const DEV_CHAR_MAP = {
+  'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ऋ': 'ri',
+  'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au', 'अं': 'an', 'अः': 'ah',
+  'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'ng',
+  'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'ny',
+  'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n',
+  'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+  'प': 'p', 'फ': 'f', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+  'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
+  'ड़': 'r', 'ढ़': 'rh', 'ज़': 'z', 'फ़': 'f', 'क़': 'q', 'ख़': 'kh', 'ग़': 'gh',
+  'ा': 'a', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo', 'ृ': 'ri',
+  'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ं': 'n', 'ँ': 'n', '्': '', 'ः': 'h'
+};
+
+/**
+ * Convert Devanagari text to Roman Hinglish.
+ */
+export function devanagariToHinglish(text) {
+  if (!text) return "";
+  let result = text;
+
+  // Step 1: Replace whole dictionary words
+  for (const [dev, hing] of Object.entries(DEVANAGARI_WORDS_MAP)) {
+    result = result.split(dev).join(hing);
+  }
+
+  // Step 2: Character-by-character transliteration for remaining Devanagari characters
+  let transliterated = "";
+  const chars = Array.from(result);
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    const nextCh = chars[i + 1];
+    if (DEV_CHAR_MAP[ch] !== undefined) {
+      let roman = DEV_CHAR_MAP[ch];
+      // If consonant without matra or virama, add implicit 'a'
+      const isConsonant = /[\u0915-\u0939\u0958-\u095F]/.test(ch);
+      const isNextMatraOrVirama = /[\u093E-\u094D\u0962\u0963]/.test(nextCh || "");
+      if (isConsonant && !isNextMatraOrVirama && nextCh && /[^\s\p{P}]/u.test(nextCh)) {
+        roman += "a";
+      }
+      transliterated += roman;
+    } else {
+      transliterated += ch;
+    }
+  }
+
+  return transliterated;
+}
+
 /**
  * Convert Roman Hinglish text to Devanagari script.
  * Falls back to original word for unknown terms.
@@ -221,6 +361,7 @@ export function hinglishToEnglish(text) {
  * Capitalize first letter of each segment
  */
 export function capitalizeSegment(text) {
+  if (!text) return "";
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
@@ -230,9 +371,15 @@ export function capitalizeSegment(text) {
  * @param {string} script - "roman" | "native" | "english"
  */
 export function convertSubtitles(subtitles, script) {
+  if (!Array.isArray(subtitles)) return [];
   return subtitles.map((s) => {
     let newText = s.text;
-    if (script === "native") {
+    if (script === "roman") {
+      // If text contains Devanagari script, transliterate to Roman Hinglish
+      if (/[\u0900-\u097F]/.test(s.text)) {
+        newText = devanagariToHinglish(s.text);
+      }
+    } else if (script === "native") {
       newText = hinglishToDevanagari(s.text);
     } else if (script === "english") {
       newText = hinglishToEnglish(s.text);

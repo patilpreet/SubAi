@@ -34,10 +34,18 @@ export const useAuthStore = create((set) => ({
     } = supabase.auth.onAuthStateChange((event, session) => {
       set({ session, user: session?.user ?? null });
       if (event === "SIGNED_IN" && session?.user) {
-        const email = session.user.email;
-        const name = session.user.user_metadata?.full_name || email?.split("@")[0] || "there";
-        if (email) {
-          sendWelcomeEmail({ email, name }).catch((err) => console.warn("Welcome email failed:", err));
+        const userId = session.user.id;
+        const alreadySent = typeof window !== "undefined" && localStorage.getItem(`welcome_sent_${userId}`);
+        if (!alreadySent) {
+          const email = session.user.email;
+          const name = session.user.user_metadata?.full_name || email?.split("@")[0] || "there";
+          if (email) {
+            sendWelcomeEmail({ email, name })
+              .then(() => {
+                localStorage.setItem(`welcome_sent_${userId}`, "true");
+              })
+              .catch((err) => console.warn("Welcome email failed:", err));
+          }
         }
       }
     });
